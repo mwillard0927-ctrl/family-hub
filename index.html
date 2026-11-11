@@ -91,6 +91,7 @@ label.f{font-size:12px;color:var(--mut);display:block}
 </style>
 </head>
 <body>
+<input type="file" id="phPick" accept="image/*" style="display:none" onchange="pickPhoto(this)">
 <div id="splash"><img src="logo.png" alt="Family crest"></div>
 <header><h1 id="ttl" data-lp="admin"><img src="logo.png" alt="" onclick="showCrest()">Family Hub</h1><button class="me" id="meBtn"></button></header>
 <main id="app"></main>
@@ -258,7 +259,7 @@ bdays(){
   ${l.map(b=>`<div class="card" data-lp="birthdays:${b.id}"><button class="x" onclick="del('birthdays','${b.id}')">×</button><b>${esc(b.name)}</b> <span class="mut">${fmtD(b.date,true)}</span><div class="big">${b.days===0?"🎉 Today!":b.days+" days"}</div>${b.age?`<span class="mut">turns ${b.age}</span>`:""}</div>`).join("")}`;
 },
 photos(){
-  return `<div class="card"><h2>Post a photo</h2><input id="phF" type="file" accept="image/*"><input id="phC" placeholder="Caption"><button class="b" onclick="postPhoto()">Post</button><p class="mut" id="phS"></p></div>
+  return `<div class="card"><h2>Post a photo</h2>${pendingPhoto?`<img src="${pendingPhoto}" style="width:100%;border-radius:12px;margin-bottom:8px">`:""}<button class="g" style="width:100%;margin-bottom:8px" onclick="document.getElementById('phPick').click()">📷 ${pendingPhoto?"Choose a different photo":"Choose photo"}</button><input id="phC" placeholder="Caption"><button class="b" onclick="postPhoto()" ${pendingPhoto?"":"disabled style='opacity:.45'"}>Post</button><p class="mut" id="phS"></p></div>
   <div class="photos">${D.photos.sort((a,b)=>b.at-a.at).map(p=>`<div class="card" style="padding:6px" data-lp="photos:${p.id}"><img src="${p.img}" alt=""><p style="margin:6px 2px 2px">${esc(p.cap)}</p><div class="mut">${esc(p.by)} · ${ago(p.at)}${p.by===me?` · <a onclick="del('photos','${p.id}')">delete</a>`:""}</div></div>`).join("")}</div>`;
 },
 settings(){
@@ -286,9 +287,10 @@ function postGroc(){const t=val("#gT");if(!t)return;add("groceries",{text:t,got:
 function clearGot(){D.groceries.filter(g=>g.got).forEach(g=>rm(g.id))}
 function postBday(){const n=val("#bN"),d=$("#bD").value;if(!n||!d)return;add("birthdays",{name:n,date:d});clr("#bN","#bD");document.activeElement.blur()}
 function postMem(){const n=val("#mN");if(!n)return;ins("members",{name:n,emoji:val("#mE")||"🙂",color:$("#mC").value});clr("#mN","#mE");document.activeElement.blur()}
-function postPhoto(){const f=$("#phF").files[0];if(!f)return;$("#phS").textContent="Uploading…";
-  const img=new Image();img.onload=()=>{const s=Math.min(1,900/Math.max(img.width,img.height)),c=document.createElement("canvas");c.width=img.width*s;c.height=img.height*s;c.getContext("2d").drawImage(img,0,0,c.width,c.height);
-    add("photos",{img:c.toDataURL("image/jpeg",.7),cap:val("#phC")}).then(()=>{$("#phS").textContent="";clr("#phC");$("#phF").value=""})};img.src=URL.createObjectURL(f)}
+let pendingPhoto=null;try{pendingPhoto=sessionStorage.getItem("fh_pend")}catch{}
+function pickPhoto(inp){const f=inp.files[0];inp.value="";if(!f)return;const img=new Image();img.onload=()=>{const s=Math.min(1,900/Math.max(img.width,img.height)),c=document.createElement("canvas");c.width=img.width*s;c.height=img.height*s;c.getContext("2d").drawImage(img,0,0,c.width,c.height);
+  pendingPhoto=c.toDataURL("image/jpeg",.7);try{sessionStorage.setItem("fh_pend",pendingPhoto)}catch{}if(tab!=="photos")go("photos");else{document.activeElement?.blur();render()}};img.onerror=()=>alert("Couldn't read that photo — try a different one.");img.src=URL.createObjectURL(f)}
+function postPhoto(){if(!pendingPhoto)return;$("#phS").textContent="Uploading…";add("photos",{img:pendingPhoto,cap:val("#phC")}).then(r=>{if(r&&r.error)return;pendingPhoto=null;try{sessionStorage.removeItem("fh_pend")}catch{};render()})}
 
 let gOS=/iPhone|iPad|iPod/.test(navigator.userAgent)?"ios":"and",gStep=0;
 const URLTXT="mwillard0927-ctrl.github.io/family-hub";
