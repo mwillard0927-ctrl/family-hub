@@ -53,6 +53,28 @@ nav button.on{color:var(--acc);font-weight:700}
 .lpOn{outline:2px dashed var(--acc);outline-offset:2px}
 #sheet{position:fixed;inset:0;background:rgba(0,0,0,.4);z-index:20;display:flex;align-items:flex-end}
 #sheet .card{width:100%;max-height:85vh;overflow:auto;border-radius:16px 16px 0 0;margin:0;padding-bottom:calc(16px + env(safe-area-inset-bottom))}
+.ph{width:170px;height:300px;margin:10px auto;border:6px solid #222;border-radius:26px;background:#fafafa;position:relative;overflow:hidden}
+.ph .tb{position:absolute;left:0;right:0;height:34px;background:#eee;display:flex;align-items:center;justify-content:space-between;padding:0 8px;font-size:11px;color:#555}
+.ph .tb.top{top:0}.ph .tb.bot{bottom:0}
+.ph .pg{position:absolute;top:44px;left:10px;right:10px}
+.ph .pg i{display:block;height:10px;background:#ddd;border-radius:5px;margin-bottom:8px}
+.ph .hd{background:var(--acc);height:28px;border-radius:6px;margin-bottom:10px;color:#fff;font-size:11px;padding:7px}
+.ph .menu{position:absolute;background:#fff;box-shadow:0 4px 14px rgba(0,0,0,.25);border-radius:10px;font-size:11px;padding:4px 0;animation:up .5s ease}
+.ph .menu div{padding:7px 10px;border-bottom:1px solid #f0f0f0}
+.ph .menu .hi{background:var(--acc2);color:var(--acc);font-weight:700}
+.ph .tap{position:absolute;width:30px;height:30px;border-radius:50%;border:3px solid #e8453c;transform:translate(-50%,-50%);animation:pulse 1.2s infinite}
+.ph .fin{position:absolute;font-size:22px;transform:translate(-20%,0);animation:poke 1.2s infinite}
+.ph .home{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;padding:40px 12px}
+.ph .home b{width:30px;height:30px;border-radius:8px;background:#ccc;display:block;margin:auto}
+.ph .home b.me{background:var(--acc);font-size:18px;text-align:center;line-height:30px}
+@keyframes pulse{0%{box-shadow:0 0 0 0 rgba(232,69,60,.6)}100%{box-shadow:0 0 0 16px rgba(232,69,60,0)}}
+@keyframes poke{0%,100%{margin-top:6px}50%{margin-top:0}}
+@keyframes up{from{opacity:0;transform:translateY(15px)}to{opacity:1}}
+.seg{display:flex;background:var(--acc2);border-radius:10px;padding:3px;margin-bottom:8px}
+.seg button{flex:1;border:none;background:none;padding:8px;border-radius:8px;font:inherit;color:var(--acc)}
+.seg button.on{background:#fff;font-weight:700;box-shadow:0 1px 3px rgba(0,0,0,.1)}
+.dots{text-align:center;margin:6px 0}.dots span{display:inline-block;width:8px;height:8px;border-radius:4px;background:var(--line);margin:0 3px}.dots span.on{background:var(--acc);width:20px}
+.stepT{font-weight:700;text-align:center;font-size:16px;min-height:44px}
 label.f{font-size:12px;color:var(--mut);display:block}
 .big{font-size:28px;font-weight:700;color:var(--acc)}
 </style>
@@ -150,7 +172,8 @@ const V={
 home(){
   const ev=upcoming().slice(0,4),bd=D.birthdays.map(b=>({...b,...nextBday(b)})).sort((a,b)=>a.days-b.days).slice(0,3);
   const myCh=D.chores.filter(c=>!c.done&&c.to===me),open=D.polls.filter(p=>!(p.votes||{})[me]);
-  return `<div class="card"><div class="mut">Hi ${esc(me)} 👋</div><div class="big">${new Date().toLocaleDateString(undefined,{weekday:"long",month:"long",day:"numeric"})}</div></div>
+  const inst=matchMedia("(display-mode: standalone)").matches||navigator.standalone;
+  return `${inst||ls.get("fh_hideG",false)?"":`<div class="card" style="background:var(--acc2)"><b>📲 Put Family Hub on your home screen</b><p class="mut">It'll open like a real app.</p><br><button class="b" onclick="go('settings')">Show me how</button> <button class="g" onclick="ls.set('fh_hideG',true);render()">Hide</button></div>`}<div class="card"><div class="mut">Hi ${esc(me)} 👋</div><div class="big">${new Date().toLocaleDateString(undefined,{weekday:"long",month:"long",day:"numeric"})}</div></div>
   <div class="card"><h2>📅 Coming up</h2>${ev.map(e=>`<div class="chk"><div class="tx"><b>${esc(e.title)}</b><div class="mut">${fmtD(e.date)}${e.time?" · "+fmtT(e.time):""}</div></div></div>`).join("")||'<p class="mut">Nothing scheduled.</p>'}</div>
   <div class="card"><h2>🎂 Birthdays</h2>${bd.map(b=>`<div class="chk"><div class="tx"><b>${esc(b.name)}</b>${b.age?` turns ${b.age}`:""}</div><b>${b.days===0?"🎉 Today!":b.days+" days"}</b></div>`).join("")||'<p class="mut">None added yet.</p>'}</div>
   <div class="card"><h2>✅ Your chores (${myCh.length})</h2>${myCh.map(c=>`<div class="chk"><input type="checkbox" onchange="upd('chores','${c.id}',{done:true,doneBy:me})"><div class="tx">${esc(c.text)}${c.due?` <span class="mut">· due ${fmtD(c.due)}</span>`:""}</div></div>`).join("")||'<p class="mut">All caught up!</p>'}</div>
@@ -217,7 +240,7 @@ photos(){
 settings(){
   return `${ADMIN?`<div class="card"><h2>Family members</h2>${D.members.map(m=>`<div class="chk" data-lp="members:${m.id}"><span style="font-size:24px">${m.emoji}</span><div class="tx"><b style="color:${m.color}">${esc(m.name)}</b></div><button class="x" onclick="del('members','${m.id}')">×</button></div>`).join("")}
   <br><div class="row"><input id="mE" placeholder="Emoji" style="flex:0 0 70px"><input id="mN" placeholder="Name"><input id="mC" type="color" value="#4a7bd0" style="flex:0 0 50px;padding:2px"></div><button class="b" onclick="postMem()">Add member</button><p class="mut">Hold a member to rename, recolor, or make their phone pick again.</p></div>`:""}
-  <div class="card"><h2>Install on your phone</h2><p class="mut">iPhone: Safari → Share → Add to Home Screen. Android: Chrome menu → Install app.</p></div>
+  ${guideHTML()}
   ${ADMIN?`<div class="card"><button class="g" onclick="localStorage.removeItem('fh_meId');meId=null;pickMe()">Switch person on this phone</button> <button class="g" onclick="ADMIN=false;ls.set('fh_adm',false);render()">Hide admin mode</button></div>`:""}`;
 }};
 
@@ -243,6 +266,30 @@ function postPhoto(){const f=$("#phF").files[0];if(!f)return;$("#phS").textConte
   const img=new Image();img.onload=()=>{const s=Math.min(1,900/Math.max(img.width,img.height)),c=document.createElement("canvas");c.width=img.width*s;c.height=img.height*s;c.getContext("2d").drawImage(img,0,0,c.width,c.height);
     add("photos",{img:c.toDataURL("image/jpeg",.7),cap:val("#phC")}).then(()=>{$("#phS").textContent="";clr("#phC");$("#phF").value=""})};img.src=URL.createObjectURL(f)}
 
+let gOS=/iPhone|iPad|iPod/.test(navigator.userAgent)?"ios":"and",gStep=0;
+const URLTXT="mwillard0927-ctrl.github.io/family-hub";
+const GUIDE={
+ios:[
+ ["Open the link in <u>Safari</u>",`<div class="tb top">🔒 ${"family-hub"}</div><div class="pg"><div class="hd">🏡 Family Hub</div><i></i><i></i><i style="width:60%"></i></div><div class="tb bot"><span>‹</span><span>›</span><span>⬆️</span><span>📖</span><span>⧉</span></div><div class="tap" style="left:50%;top:17px"></div>`,"It must be Safari — Chrome on iPhone can't add apps."],
+ ["Tap the <u>Share</u> button ⬆️ at the bottom",`<div class="tb top">🔒 family-hub</div><div class="pg"><div class="hd">🏡 Family Hub</div><i></i><i></i></div><div class="tb bot"><span>‹</span><span>›</span><span>⬆️</span><span>📖</span><span>⧉</span></div><div class="tap" style="left:50%;top:273px"></div><div class="fin" style="left:50%;top:230px">👆</div>`,"The square with the arrow pointing up. On newer iPhones, tap ••• first, then Share."],
+ ["Scroll down, tap <u>Add to Home Screen</u>",`<div class="pg"><i></i></div><div class="menu" style="left:8px;right:8px;bottom:8px"><div>Copy</div><div>Add to Reading List</div><div>Add Bookmark</div><div class="hi">➕ Add to Home Screen</div><div>Find on Page</div></div><div class="tap" style="left:50%;top:228px"></div>`,"You may need to swipe the share menu up to see it."],
+ ["Tap <u>Add</u> in the top-right corner",`<div class="tb top" style="background:#fff"><span>Cancel</span><b>Add to Home Screen</b><b style="color:#0a7aff">Add</b></div><div class="pg" style="top:50px;display:flex;gap:8px;align-items:center"><b style="width:40px;height:40px;border-radius:10px;background:var(--acc);display:block;text-align:center;line-height:40px">🏡</b><span style="font-size:12px">Family Hub</span></div><div class="tap" style="left:148px;top:17px"></div>`,"Leave the name as Family Hub."],
+ ["Open it from your home screen 🎉",`<div class="home"><b></b><b></b><b></b><b></b><b></b><b class="me">🏡</b><b></b><b></b></div><div class="tap" style="left:59px;top:96px"></div>`,"From now on, open it from this icon — no browser bar."]],
+and:[
+ ["Open the link in <u>Chrome</u>",`<div class="tb top"><span>🔒 family-hub</span><b>⋮</b></div><div class="pg"><div class="hd">🏡 Family Hub</div><i></i><i></i><i style="width:60%"></i></div><div class="tap" style="left:50%;top:17px"></div>`,"Samsung Internet works too — look for its menu ≡ at the bottom."],
+ ["Tap the <u>⋮</u> menu at the top-right",`<div class="tb top"><span>🔒 family-hub</span><b>⋮</b></div><div class="pg"><div class="hd">🏡 Family Hub</div><i></i><i></i></div><div class="tap" style="left:150px;top:17px"></div><div class="fin" style="left:142px;top:30px">👆</div>`,"Three dots stacked up and down."],
+ ["Tap <u>Add to Home screen</u> or <u>Install app</u>",`<div class="pg"><i></i></div><div class="menu" style="right:6px;top:6px;width:130px"><div>New tab</div><div>History</div><div>Downloads</div><div>Share…</div><div class="hi">📲 Add to Home screen</div><div>Settings</div></div><div class="tap" style="left:95px;top:136px"></div>`,"Either name — Chrome changes the wording sometimes."],
+ ["Tap <u>Install</u> (or <u>Add</u>)",`<div class="pg"><i></i><i></i></div><div class="menu" style="left:10px;right:10px;top:90px;padding:12px"><b>Install app?</b><div style="border:none;display:flex;gap:8px;align-items:center"><b style="width:30px;height:30px;border-radius:8px;background:var(--acc);display:block;text-align:center;line-height:30px">🏡</b>Family Hub</div><div style="border:none;text-align:right"><span style="margin-right:14px">Cancel</span><b style="color:var(--acc)">Install</b></div></div><div class="tap" style="left:130px;top:178px"></div>`,"If it asks, tap Add automatically."],
+ ["Open it from your home screen 🎉",`<div class="home"><b></b><b></b><b></b><b></b><b></b><b class="me">🏡</b><b></b><b></b></div><div class="tap" style="left:59px;top:96px"></div>`,"It opens full-screen like a regular app."]]};
+function guideHTML(){const st=GUIDE[gOS],[t,ph,tip]=st[gStep];
+  return `<div class="card"><h2>📲 Install on your phone</h2>
+  <div class="seg"><button class="${gOS==="ios"?"on":""}" onclick="gOS='ios';gStep=0;render()"> iPhone</button><button class="${gOS==="and"?"on":""}" onclick="gOS='and';gStep=0;render()">🤖 Android</button></div>
+  <div class="mut" style="text-align:center">Step ${gStep+1} of ${st.length}</div>
+  <div class="stepT">${t}</div><div class="ph" key="${gOS+gStep}">${ph}</div>
+  <p class="mut" style="text-align:center;min-height:36px">${tip}</p>
+  <div class="dots">${st.map((_,i)=>`<span class="${i===gStep?"on":""}" onclick="gStep=${i};render()"></span>`).join("")}</div>
+  <div class="row"><button class="g" ${gStep?"":"disabled style='opacity:.4'"} onclick="gStep--;render()">‹ Back</button><button class="b" onclick="gStep=(gStep+1)%${st.length};render()">${gStep===st.length-1?"Start over":"Next ›"}</button></div>
+  <p class="mut" style="text-align:center;margin-top:10px">Link to share: <b>${URLTXT}</b></p></div>`}
 const ADMIN_PIN="0927";
 let lpT=null,lpEl=null;
 document.addEventListener("pointerdown",e=>{const el=e.target.closest("[data-lp]");if(!el)return;
