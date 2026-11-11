@@ -102,8 +102,6 @@ function saveCfg(){const url=val("#sU"),key=val("#sK");if(!url.startsWith("https
 
 async function start(){
   db=supabase.createClient(cfg.url,cfg.key);
-  const {data:{session}}=await db.auth.getSession();
-  if(!session)return login();
   const r=await db.from("items").select("*");
   if(r.error){$("#app").innerHTML=`<div class="card"><h2>Can't reach the database</h2><p class="mut">${esc(r.error.message)}</p><br><button class="g" onclick="localStorage.removeItem('fh_sb');location.reload()">Re-enter Supabase info</button></div>`;return}
   r.data.forEach(put);
@@ -213,7 +211,7 @@ settings(){
   return `<div class="card"><h2>Family members</h2>${D.members.map(m=>`<div class="chk"><span style="font-size:24px">${m.emoji}</span><div class="tx"><b style="color:${m.color}">${esc(m.name)}</b></div><button class="x" onclick="del('members','${m.id}')">×</button></div>`).join("")}
   <br><div class="row"><input id="mE" placeholder="Emoji" style="flex:0 0 70px"><input id="mN" placeholder="Name"><input id="mC" type="color" value="#4a7bd0" style="flex:0 0 50px;padding:2px"></div><button class="b" onclick="postMem()">Add member</button></div>
   <div class="card"><h2>Install on your phone</h2><p class="mut">iPhone: Safari → Share → Add to Home Screen. Android: Chrome menu → Install app.</p></div>
-  <div class="card"><button class="g" onclick="db.auth.signOut().then(()=>location.reload())">Log out of this phone</button></div>`;
+  <div class="card"><button class="g" onclick="me=null;localStorage.removeItem('fh_me');pickMe()">Switch person on this phone</button></div>`;
 }};
 
 function noteHTML(n,full){return `${full&&(n.by===me)?`<button class="x" onclick="del('notes','${n.id}')">×</button>`:""}${chip(n.by)} → ${n.to==="Everyone"?"<b>Everyone</b>":chip(n.to)} <span class="mut">${ago(n.at)}</span>${n.pin?" 📌":""}
