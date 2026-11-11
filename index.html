@@ -177,6 +177,7 @@ async function start(){
   if(!r.data.some(x=>x.coll==="meta"&&x.data.seed>=6)){await ins("meta",{seed:6});if(!D.members.some(x=>x.name==="Travis"))await ins("members",TRAVIS6)}
   if(!r.data.some(x=>x.coll==="meta"&&x.data.seed>=7)){await ins("meta",{seed:7});if(!D.members.some(x=>x.name==="Chris"))await ins("members",CHRIS7)}
   if(!r.data.some(x=>x.coll==="meta"&&x.data.seed>=8)){await ins("meta",{seed:8});const c=D.members.find(x=>x.name==="Chris");if(c)await upd("members",c.id,{pic:CHRIS8})}
+  if(!r.data.some(x=>x.coll==="meta"&&x.data.seed>=9)){await ins("meta",{seed:9});const d=D.members.find(x=>x.name==="Debbie");if(d)await upd("members",d.id,{resetAt:Date.now()})}
   if(!D.members.length)for(const m of DEFAULT_MEMBERS)await ins("members",m).then(x=>x.data);
   db.channel("items").on("postgres_changes",{event:"*",schema:"public",table:"items"},p=>{
     if(p.eventType==="DELETE"){for(const c in D)D[c]=D[c].filter(x=>x.id!==p.old.id)}else put(p.new);render()}).subscribe(st=>{if(st==="SUBSCRIBED")resync()});
@@ -205,8 +206,11 @@ function render(){
 function go(k){tab=k;ls.set("fh_tab",k);document.activeElement?.blur();render();scrollTo(0,0)}
 function pickMe(){
   $("#nav").innerHTML="";$("#meBtn").classList.add("hide");
-  $("#app").innerHTML=`<div class="card"><h2>Who are you?</h2><div class="who">${D.members.map(m=>`<button style="background:${m.color};box-shadow:0 0 14px ${m.color}88" onclick="setMe('${m.id}')">${face(m,72)}<br>${esc(m.name)}</button>`).join("")||'<p class="mut">Loading…</p>'}</div></div>`;
+  $("#app").innerHTML=`<div class="card"><h2>👋 Welcome! Which one is <u>you</u>?</h2><p class="mut" style="margin-bottom:12px">Tap <b>your own name</b>. This sets up the app as you on this phone, and only the app admin can change it later. You'll be able to see everyone's notes and events after this.</p><div class="who">${D.members.map(m=>`<button style="background:${m.color};box-shadow:0 0 14px ${m.color}88" onclick="confirmMe('${m.id}')">${face(m,72)}<br>${esc(m.name)}</button>`).join("")||'<p class="mut">Loading…</p>'}</div></div>`;
 }
+function confirmMe(id){const m=D.members.find(x=>x.id===id);if(!m)return;const box=document.createElement("div");box.id="sheet";
+  box.innerHTML=`<div class="card" style="text-align:center"><div style="margin:6px 0 10px">${face(m,96)}</div><h2>Are you ${esc(m.name)}?</h2><p class="mut">Only pick this if you are <b>${esc(m.name)}</b>. It can't be changed from this phone afterward.</p><br><div class="row"><button class="g" onclick="closeSheet()">No, go back</button><button class="b" onclick="closeSheet();setMe('${id}')">Yes, I'm ${esc(m.name)}</button></div></div>`;
+  box.onclick=e=>{if(e.target===box)closeSheet()};document.body.appendChild(box)}
 function setMe(id){meId=id;ls.set("fh_meId",id);ls.set("fh_pickAt",Date.now());render();logEv("picked");ls.set("fh_lastLog",Date.now())}
 
 
