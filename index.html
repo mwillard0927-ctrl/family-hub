@@ -79,12 +79,20 @@ nav button.on{color:#c9b8ff;font-weight:700;text-shadow:0 0 10px rgba(160,120,25
 .seg button.on{background:var(--card);font-weight:700;box-shadow:0 1px 3px rgba(0,0,0,.1)}
 .dots{text-align:center;margin:6px 0}.dots span{display:inline-block;width:8px;height:8px;border-radius:4px;background:var(--line);margin:0 3px}.dots span.on{background:var(--grad);width:20px}
 .stepT{font-weight:700;text-align:center;font-size:16px;min-height:44px}
+#splash,#crest{position:fixed;inset:0;z-index:50;background:radial-gradient(circle at 50% 45%,#141a42,#020309 70%);display:flex;align-items:center;justify-content:center}
+#splash img{width:min(88vw,520px);animation:spIn .9s ease both}
+#splash.out{opacity:0;transition:opacity .45s ease}
+@keyframes spIn{from{opacity:0;transform:scale(.9)}to{opacity:1;transform:none}}
+#crest{flex-direction:column;animation:spIn .35s ease}
+#crest img{width:min(94vw,640px);border-radius:18px;box-shadow:0 0 40px rgba(124,92,255,.5)}
+#crest p{color:var(--mut);margin-top:18px;font-size:13px}
 label.f{font-size:12px;color:var(--mut);display:block}
 .big{font-size:28px;font-weight:700;background:var(--grad);-webkit-background-clip:text;background-clip:text;color:transparent}
 </style>
 </head>
 <body>
-<header><h1 id="ttl" data-lp="admin"><img src="logo.png" alt="">Family Hub</h1><button class="me" id="meBtn"></button></header>
+<div id="splash"><img src="logo.png" alt="Family crest"></div>
+<header><h1 id="ttl" data-lp="admin"><img src="logo.png" alt="" onclick="showCrest()">Family Hub</h1><button class="me" id="meBtn"></button></header>
 <main id="app"></main>
 <nav id="nav"></nav>
 
@@ -331,6 +339,8 @@ function saveEdit(c,id){const o={};document.querySelectorAll("#sheet [data-k]").
   if(c==="members"&&o.name&&o.name!==old.name){const on=old.name;for(const cc of Object.keys(D))if(cc!=="members")D[cc].forEach(x=>{const ch={};if(x.by===on)ch.by=o.name;if(x.to===on)ch.to=o.name;if(x.who===on)ch.who=o.name;if(x.doneBy===on)ch.doneBy=o.name;if(Object.keys(ch).length)upd(cc,x.id,ch)})}
   upd(c,id,o);closeSheet()}
 
+function showCrest(){if(document.getElementById("crest"))return;const d=document.createElement("div");d.id="crest";d.innerHTML='<img src="logo.png" alt="Family crest"><p>Tap anywhere to close</p>';d.onclick=()=>d.remove();document.body.appendChild(d)}
+setTimeout(()=>{const sp=document.getElementById("splash");if(!sp)return;sp.classList.add("out");setTimeout(()=>sp.remove(),500)},1300);
 if(!cfg)setup();else start();
 if("serviceWorker"in navigator)navigator.serviceWorker.register("sw.js").catch(()=>{});
 </script>
