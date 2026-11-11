@@ -60,7 +60,7 @@ nav button.on{color:var(--acc);font-weight:700}
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script>
 /* ====== SETUP: paste your Supabase Project URL + anon key here (or use the in-app setup screen) ====== */
-const SUPABASE = null; // e.g. {url:"https://xxxx.supabase.co", key:"eyJ..."}
+const SUPABASE = {url:"https://ksuvjhutalvwgikvsdeu.supabase.co", key:"sb_publishable_v60aHIwkGcr_a9UvWTb9jA_7qcffk8B"};
 /* Family members — edit names/colors/emoji. Also editable in Settings inside the app. */
 const DEFAULT_MEMBERS = [
   {name:"Matt",emoji:"🧔",color:"#2f6f5e"}
@@ -102,6 +102,8 @@ function saveCfg(){const url=val("#sU"),key=val("#sK");if(!url.startsWith("https
 
 async function start(){
   db=supabase.createClient(cfg.url,cfg.key);
+  const {data:{session}}=await db.auth.getSession();
+  if(!session)return login();
   const r=await db.from("items").select("*");
   if(r.error){$("#app").innerHTML=`<div class="card"><h2>Can't reach the database</h2><p class="mut">${esc(r.error.message)}</p><br><button class="g" onclick="localStorage.removeItem('fh_sb');location.reload()">Re-enter Supabase info</button></div>`;return}
   r.data.forEach(put);
@@ -111,6 +113,13 @@ async function start(){
   document.addEventListener("visibilitychange",()=>{if(!document.hidden)resync()});
   render();
 }
+function login(){
+  $("#nav").innerHTML="";$("#meBtn").classList.add("hide");
+  $("#app").innerHTML=`<div class="card"><h2>🔒 Family login</h2><p class="mut">Enter the family email and password once — this phone will stay logged in.</p><br>
+  <input id="lE" type="email" placeholder="Family email" autocomplete="username"><input id="lP" type="password" placeholder="Password" autocomplete="current-password">
+  <button class="b" onclick="doLogin()">Log in</button></div>`;
+}
+async function doLogin(){const r=await db.auth.signInWithPassword({email:val("#lE"),password:$("#lP").value});if(r.error)return alert("Login failed: "+r.error.message);location.reload()}
 function put(row){const c=row.coll;if(!D[c])return;const o={...row.data,id:row.id};const i=D[c].findIndex(x=>x.id===row.id);i<0?D[c].push(o):D[c][i]=o}
 async function resync(){const r=await db.from("items").select("*");if(r.error)return;for(const c in D)D[c]=[];r.data.forEach(put);render()}
 
@@ -204,7 +213,7 @@ settings(){
   return `<div class="card"><h2>Family members</h2>${D.members.map(m=>`<div class="chk"><span style="font-size:24px">${m.emoji}</span><div class="tx"><b style="color:${m.color}">${esc(m.name)}</b></div><button class="x" onclick="del('members','${m.id}')">×</button></div>`).join("")}
   <br><div class="row"><input id="mE" placeholder="Emoji" style="flex:0 0 70px"><input id="mN" placeholder="Name"><input id="mC" type="color" value="#4a7bd0" style="flex:0 0 50px;padding:2px"></div><button class="b" onclick="postMem()">Add member</button></div>
   <div class="card"><h2>Install on your phone</h2><p class="mut">iPhone: Safari → Share → Add to Home Screen. Android: Chrome menu → Install app.</p></div>
-  <div class="card"><button class="g" onclick="localStorage.removeItem('fh_sb');location.reload()">Reset Supabase connection</button></div>`;
+  <div class="card"><button class="g" onclick="db.auth.signOut().then(()=>location.reload())">Log out of this phone</button></div>`;
 }};
 
 function noteHTML(n,full){return `${full&&(n.by===me)?`<button class="x" onclick="del('notes','${n.id}')">×</button>`:""}${chip(n.by)} → ${n.to==="Everyone"?"<b>Everyone</b>":chip(n.to)} <span class="mut">${ago(n.at)}</span>${n.pin?" 📌":""}

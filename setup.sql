@@ -1,4 +1,5 @@
--- Run once in Supabase: SQL Editor → New query → paste → Run
+-- Family Hub — run once in Supabase SQL Editor.
+-- REPLACE family@example.com (2 places) with the family login email you created.
 create table if not exists items (
   id uuid primary key default gen_random_uuid(),
   coll text not null,
@@ -6,9 +7,13 @@ create table if not exists items (
   created_at timestamptz default now()
 );
 alter table items enable row level security;
-create policy "family read"   on items for select using (true);
-create policy "family insert" on items for insert with check (true);
-create policy "family update" on items for update using (true);
-create policy "family delete" on items for delete using (true);
+drop policy if exists "family read" on items;
+drop policy if exists "family insert" on items;
+drop policy if exists "family update" on items;
+drop policy if exists "family delete" on items;
+drop policy if exists "family only" on items;
+revoke all on items from anon;
+create policy "family only" on items for all to authenticated
+  using ((auth.jwt()->>'email') = 'family@example.com')
+  with check ((auth.jwt()->>'email') = 'family@example.com');
 alter table items replica identity full;
-alter publication supabase_realtime add table items;
