@@ -345,13 +345,23 @@ let devId=ls.get("fh_dev",null);if(!devId){devId=Math.random().toString(36).slic
 function uaShort(){const u=navigator.userAgent;const m=u.match(/\(([^)]+)\)/);let d=/iPhone/.test(u)?"iPhone":/iPad/.test(u)?"iPad":/Android/.test(u)?((m&&m[1].split(";").map(x=>x.trim()).find(x=>/^(SM-|Pixel|moto|LM-|SAMSUNG)/i.test(x)))||"Android"):/Mac/.test(u)?"Mac":/Windows/.test(u)?"Windows PC":"Device";
   const app=(matchMedia("(display-mode: standalone)").matches||navigator.standalone)?"app":"browser";return d+" · "+app}
 function logEv(ev){if(!db||!me)return;ins("log",{who:me,ev,dev:devId,ua:uaShort(),at:Date.now()})}
+let tbuf=[];
+const TABN=Object.fromEntries(TABS.map(t=>[t[0],t[2]]));
+document.addEventListener("click",e=>{if(!me||document.getElementById("splash"))return;
+  const el=e.target.closest("button,input[type=checkbox],input[type=file],.opt,[onclick],.cal div");if(!el)return;
+  let l=(el.closest("nav")?"→ tab ":"")+(el.type==="checkbox"?(el.checked?"☑ checked ":"☐ unchecked ")+(el.closest(".chk")?.querySelector(".tx")?.innerText||""):el.innerText||el.alt||el.getAttribute("placeholder")||el.type||"item");
+  l=l.replace(/\s+/g," ").trim().slice(0,40);tbuf.push({l,tab:TABN[tab]||tab,at:Date.now()})},true);
+function flushT(){if(!tbuf.length||!db||!me)return;const a=tbuf;tbuf=[];ins("log",{who:me,ev:"actions",acts:a,dev:devId,ua:uaShort(),at:a[0].at})}
+setInterval(flushT,20000);
+document.addEventListener("visibilitychange",()=>{if(document.hidden)flushT()});
+addEventListener("pagehide",flushT);
 function logOpen(){if(!me)return;if(Date.now()-ls.get("fh_lastLog",0)<20*60e3)return;ls.set("fh_lastLog",Date.now());logEv("opened")}
 document.addEventListener("visibilitychange",()=>{if(!document.hidden)setTimeout(logOpen,1500)});
 setTimeout(logOpen,2500);
 function activityHTML(){const L=[...D.log].sort((a,b)=>b.at-a.at),wk=Date.now()-7*864e5;
-  const rows=D.members.map(m=>{const mine=L.filter(x=>x.who===m.name);const last=mine[0];const n=mine.filter(x=>x.at>wk).length;const devs=new Set(mine.map(x=>x.dev)).size;
-    return `<div class="chk"><span>${face(m,34)}</span><div class="tx"><b>${esc(m.name)}</b><div class="mut">${last?`Last seen ${ago(last.at)} · ${esc(last.ua)}`:"Never opened"}</div></div><div style="text-align:right"><b>${n}</b><div class="mut">opens/wk${devs>1?` · ${devs} devices`:""}</div></div></div>`}).join("");
-  const feed=L.slice(0,40).map(x=>`<div class="chk"><div class="tx">${chip(x.who)} ${x.ev==="picked"?"<b>picked their name</b>":"opened the app"}<div class="mut">${new Date(x.at).toLocaleString(undefined,{weekday:"short",month:"short",day:"numeric",hour:"numeric",minute:"2-digit"})} · ${esc(x.ua)} · device ${esc(x.dev)}</div></div></div>`).join("");
+  const rows=D.members.map(m=>{const mine=L.filter(x=>x.who===m.name);const last=mine[0];const n=mine.filter(x=>x.at>wk&&x.ev!=="actions").length,taps=mine.filter(x=>x.at>wk&&x.ev==="actions").reduce((t,x)=>t+x.acts.length,0),adds=["notes","polls","events","chores","groceries","birthdays","photos"].reduce((t,c)=>t+D[c].filter(i=>i.by===m.name&&i.at>wk).length,0);const devs=new Set(mine.map(x=>x.dev)).size;
+    return `<div class="chk"><span>${face(m,34)}</span><div class="tx"><b>${esc(m.name)}</b><div class="mut">${last?`Last seen ${ago(last.at)} · ${esc(last.ua)}`:"Never opened"}</div></div><div style="text-align:right"><b>${n}</b><div class="mut">opens/wk${devs>1?` · ${devs} devices`:""}</div><div class="mut">${taps} taps · ${adds} posts</div></div></div>`}).join("");
+  const feed=L.slice(0,60).map(x=>`<div class="chk"><div class="tx">${chip(x.who)} ${x.ev==="picked"?"<b>picked their name</b>":x.ev==="actions"?`tapped <b>${x.acts.length}</b> thing${x.acts.length>1?"s":""}<details><summary class="mut">show</summary>${x.acts.map(a=>`<div class="mut">${new Date(a.at).toLocaleTimeString(undefined,{hour:"numeric",minute:"2-digit",second:"2-digit"})} · ${esc(a.tab)} › <span style="color:var(--ink)">${esc(a.l)}</span></div>`).join("")}</details>`:"opened the app"}<div class="mut">${new Date(x.at).toLocaleString(undefined,{weekday:"short",month:"short",day:"numeric",hour:"numeric",minute:"2-digit"})} · ${esc(x.ua)} · device ${esc(x.dev)}</div></div></div>`).join("");
   return `<div class="card"><h2>📈 Activity</h2>${rows}<br><h2>Recent</h2>${feed||'<p class="mut">No activity yet.</p>'}<br><button class="g" onclick="if(confirm('Clear the whole activity log?'))D.log.forEach(x=>rm(x.id))">Clear log</button></div>`}
 if(!cfg)setup();else start();
 if("serviceWorker"in navigator)navigator.serviceWorker.register("sw.js").catch(()=>{});
