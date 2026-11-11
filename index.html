@@ -81,8 +81,8 @@ nav button.on{color:#c9b8ff;font-weight:700;text-shadow:0 0 10px rgba(160,120,25
 .stepT{font-weight:700;text-align:center;font-size:16px;min-height:44px}
 #splash,#crest{position:fixed;inset:0;z-index:50;background:radial-gradient(circle at 50% 45%,#141a42,#020309 70%);display:flex;align-items:center;justify-content:center}
 #splash img{width:min(88vw,520px);animation:spIn .9s ease both}
-#splash.out{animation:spBg .5s ease-in forwards}
-#splash.out img{animation:spZoom .5s cubic-bezier(.6,0,.9,.4) forwards}
+#splash.out{animation:spBg 1s ease-in forwards}
+#splash.out img{animation:spZoom 1s cubic-bezier(.6,0,.9,.4) forwards}
 @keyframes spZoom{from{transform:scale(1);opacity:1}to{transform:scale(6);opacity:0}}
 @keyframes spBg{0%,40%{opacity:1}100%{opacity:0}}
 @keyframes spIn{from{opacity:0;transform:scale(.9)}to{opacity:1;transform:none}}
@@ -345,7 +345,7 @@ function saveEdit(c,id){const o={};document.querySelectorAll("#sheet [data-k]").
   upd(c,id,o);closeSheet()}
 
 function showCrest(){if(document.getElementById("crest"))return;const d=document.createElement("div");d.id="crest";d.innerHTML='<img src="logo.png" alt="Family crest"><p>Tap anywhere to close</p>';d.onclick=()=>d.remove();document.body.appendChild(d)}
-setTimeout(()=>{const sp=document.getElementById("splash");if(!sp)return;sp.classList.add("out");setTimeout(()=>sp.remove(),520)},2000);
+setTimeout(()=>{const sp=document.getElementById("splash");if(!sp)return;sp.classList.add("out");setTimeout(()=>sp.remove(),1020)},1000);
 let devId=ls.get("fh_dev",null);if(!devId){devId=Math.random().toString(36).slice(2,8);ls.set("fh_dev",devId)}
 function uaShort(){const u=navigator.userAgent;const m=u.match(/\(([^)]+)\)/);let d=/iPhone/.test(u)?"iPhone":/iPad/.test(u)?"iPad":/Android/.test(u)?((m&&m[1].split(";").map(x=>x.trim()).find(x=>/^(SM-|Pixel|moto|LM-|SAMSUNG)/i.test(x)))||"Android"):/Mac/.test(u)?"Mac":/Windows/.test(u)?"Windows PC":"Device";
   const app=(matchMedia("(display-mode: standalone)").matches||navigator.standalone)?"app":"browser";return d+" · "+app}
