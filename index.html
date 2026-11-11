@@ -369,7 +369,7 @@ function activityHTML(){const L=[...D.log].sort((a,b)=>b.at-a.at),wk=Date.now()-
   const feed=L.slice(0,60).map(x=>`<div class="chk"><div class="tx">${chip(x.who)} ${x.ev==="picked"?"<b>picked their name</b>":x.ev==="actions"?`tapped <b>${x.acts.length}</b> thing${x.acts.length>1?"s":""}<details><summary class="mut">show</summary>${x.acts.map(a=>`<div class="mut">${new Date(a.at).toLocaleTimeString(undefined,{hour:"numeric",minute:"2-digit",second:"2-digit"})} · ${esc(a.tab)} › <span style="color:var(--ink)">${esc(a.l)}</span></div>`).join("")}</details>`:"opened the app"}<div class="mut">${new Date(x.at).toLocaleString(undefined,{weekday:"short",month:"short",day:"numeric",hour:"numeric",minute:"2-digit"})} · ${esc(x.ua)} · device ${esc(x.dev)}</div></div></div>`).join("");
   return `<div class="card"><h2>📈 Activity</h2>${rows}<br><h2>Recent</h2>${feed||'<p class="mut">No activity yet.</p>'}<br><button class="g" onclick="if(confirm('Clear the whole activity log?'))D.log.forEach(x=>rm(x.id))">Clear log</button></div>`}
 if(!cfg)setup();else start();
-if("serviceWorker"in navigator)navigator.serviceWorker.register("sw.js").catch(()=>{});
+if("serviceWorker"in navigator)navigator.serviceWorker.register("sw.js?v=2",{updateViaCache:"none"}).then(r=>r.update()).catch(()=>{});
 </script>
 </body>
 </html>

@@ -1,2 +1,8 @@
-self.addEventListener("install",e=>self.skipWaiting());self.addEventListener("activate",e=>self.clients.claim());
-self.addEventListener('fetch',e=>{});
+// Always fetch the newest files from GitHub (no stale copies)
+self.addEventListener("install",e=>self.skipWaiting());
+self.addEventListener("activate",e=>e.waitUntil(self.clients.claim()));
+self.addEventListener("fetch",e=>{
+  const u=new URL(e.request.url);
+  if(e.request.method!=="GET"||u.origin!==location.origin)return;
+  e.respondWith(fetch(e.request,{cache:"no-cache"}).catch(()=>caches.match(e.request)));
+});
