@@ -112,7 +112,7 @@ function face(m,sz){return m.pic?`<img class="av" src="${m.pic}" ${sz?`style="wi
 function mem(n){return D.members.find(m=>m.name===n)||{name:n,emoji:"🙂",color:"#888"}}
 function chip(n){const m=mem(n);return `<span class="chip" style="background:${m.color}">${face(m)} ${esc(m.name)}</span>`}
 const strip=x=>{const{id,...r}=x;return r};
-const ins=(c,o)=>db.from("items").insert({coll:c,data:o}).then(chk);
+const ins=(c,o)=>db.from("items").insert({coll:c,data:o}).select().then(r=>{chk(r);(r.data||[]).forEach(put);return r});
 const add=(c,o)=>ins(c,{...o,by:me,at:Date.now()});
 function upd(c,id,o){const cur=D[c].find(x=>x.id===id);if(!cur)return;const d=strip(cur);
   for(const k in o){if(k.includes(".")){const[a,b]=k.split(".");d[a]={...(d[a]||{}),[b]:o[k]}}else d[k]=o[k]}
