@@ -120,7 +120,7 @@ const esc=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&
 const ls={get:(k,d)=>{try{return JSON.parse(localStorage.getItem(k))??d}catch{return d}},set:(k,v)=>{try{localStorage.setItem(k,JSON.stringify(v))}catch{}}};
 const cfg=SUPABASE||ls.get("fh_sb",null);
 let db,me=null,meId=ls.get("fh_meId",null),ADMIN=ls.get("fh_adm",false),tab=ls.get("fh_tab","home");
-const D={log:[],members:[],notes:[],polls:[],events:[],chores:[],groceries:[],birthdays:[],photos:[]};
+const D={feeds:[],log:[],members:[],notes:[],polls:[],events:[],chores:[],groceries:[],birthdays:[],photos:[]};
 let calMonth=new Date();calMonth.setDate(1);let calSel=ymd(new Date());
 
 function ymd(d){return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0")}
@@ -153,7 +153,7 @@ async function start(){
   db=supabase.createClient(cfg.url,cfg.key);
   const r=await db.from("items").select("*");
   if(r.error){$("#app").innerHTML=`<div class="card"><h2>Can't reach the database</h2><p class="mut">${esc(r.error.message)}</p><br><button class="g" onclick="localStorage.removeItem('fh_sb');location.reload()">Re-enter Supabase info</button></div>`;return}
-  r.data.forEach(put);
+  r.data.forEach(put);setTimeout(()=>loadFeeds(true),300);
   if(!r.data.some(x=>x.coll==="meta"&&x.data.seed>=2)){await ins("meta",{seed:2});for(const m of SEED_V2)if(!D.members.some(x=>x.name===m.name))await ins("members",m)}
   if(!r.data.some(x=>x.coll==="meta"&&x.data.seed>=3)){await ins("meta",{seed:3});
     if(!D.members.some(x=>x.name==="Hank"))await ins("members",HANK3);
@@ -194,7 +194,39 @@ function setMe(id){meId=id;ls.set("fh_meId",id);ls.set("fh_pickAt",Date.now());r
 
 
 function nextBday(b){const t=new Date();t.setHours(0,0,0,0);const [y,mo,da]=b.date.split("-").map(Number);let n=new Date(t.getFullYear(),mo-1,da);if(n<t)n.setFullYear(t.getFullYear()+1);return{days:Math.round((n-t)/864e5),age:y>1900?n.getFullYear()-y:null}}
-function upcoming(){const t=ymd(new Date());return D.events.filter(e=>e.date>=t).sort((a,b)=>(a.date+(a.time||"")).localeCompare(b.date+(b.time||"")))}
+const ICS_FN=(cfg&&cfg.url?cfg.url:"")+"/functions/v1/ics-proxy?url=";
+let EXT=[],extErr={},extAt=0;
+function icsDate(v,p){const m=v.match(/^(\d{4})(\d\d)(\d\d)(?:T(\d\d)(\d\d)(\d\d)(Z)?)?/);if(!m)return null;
+  if(!m[4])return{d:new Date(+m[1],m[2]-1,+m[3]),all:true};
+  if(m[7])return{d:new Date(Date.UTC(+m[1],m[2]-1,+m[3],+m[4],+m[5])),all:false};
+  return{d:new Date(+m[1],m[2]-1,+m[3],+m[4],+m[5]),all:false}}
+function parseICS(txt){const lines=txt.replace(/\r?\n[ \t]/g,"").split(/\r?\n/),out=[];let ev=null;
+  for(const ln of lines){if(ln==="BEGIN:VEVENT"){ev={ex:[]};continue}if(ln==="END:VEVENT"){if(ev&&ev.start&&ev.st!=="CANCELLED")out.push(ev);ev=null;continue}if(!ev)continue;
+    const i=ln.indexOf(":");if(i<0)continue;const k=ln.slice(0,i),v=ln.slice(i+1),key=k.split(";")[0];
+    if(key==="SUMMARY")ev.title=v.replace(/\\,/g,",").replace(/\\;/g,";").replace(/\\n/gi," ");
+    else if(key==="DTSTART")ev.start=icsDate(v);else if(key==="DTEND")ev.end=icsDate(v);
+    else if(key==="RRULE")ev.rr=Object.fromEntries(v.split(";").map(x=>x.split("=")));
+    else if(key==="EXDATE")v.split(",").forEach(x=>{const d=icsDate(x);if(d)ev.ex.push(ymd(d.d))});
+    else if(key==="STATUS")ev.st=v;else if(key==="LOCATION")ev.loc=v.replace(/\\,/g,",");else if(key==="RECURRENCE-ID")ev.rid=1}
+  return out}
+function expand(evs,feed){const from=new Date();from.setDate(from.getDate()-45);const to=new Date();to.setDate(to.getDate()+240);const res=[];
+  const DAYS={SU:0,MO:1,TU:2,WE:3,TH:4,FR:5,SA:6};
+  for(const e of evs){const s=e.start.d,mk=d=>{const k=ymd(d);if(e.ex.includes(k))return;res.push({ext:1,title:e.title||"(busy)",date:k,time:e.start.all?"":String(d.getHours()).padStart(2,"0")+":"+String(d.getMinutes()).padStart(2,"0"),who:feed.who,src:feed.kind,notes:e.loc||"",by:feed.who})};
+    if(!e.rr){if(s>=from&&s<=to)mk(s);continue}
+    const f=e.rr.FREQ,iv=+(e.rr.INTERVAL||1),until=e.rr.UNTIL?icsDate(e.rr.UNTIL).d:to,cnt=+(e.rr.COUNT||0);let n=0,d=new Date(s),guard=0;
+    const byd=e.rr.BYDAY?e.rr.BYDAY.split(",").map(x=>DAYS[x.slice(-2)]):null;
+    while(d<=until&&d<=to&&guard++<2000){
+      if(f==="WEEKLY"&&byd){for(let k=0;k<7;k++){const x=new Date(d);x.setDate(d.getDate()+k);if(x<s||x>until||x>to)continue;if(byd.includes(x.getDay())){n++;if(cnt&&n>cnt)break;if(x>=from)mk(x)}}if(cnt&&n>=cnt)break;d.setDate(d.getDate()+7*iv);continue}
+      n++;if(cnt&&n>cnt)break;if(d>=from)mk(new Date(d));
+      if(f==="DAILY")d.setDate(d.getDate()+iv);else if(f==="WEEKLY")d.setDate(d.getDate()+7*iv);else if(f==="MONTHLY")d.setMonth(d.getMonth()+iv);else if(f==="YEARLY")d.setFullYear(d.getFullYear()+iv);else break}}
+  return res}
+async function loadFeeds(force){if(!force&&Date.now()-extAt<15*60e3)return;extAt=Date.now();const all=[];
+  await Promise.all(D.feeds.map(async f=>{try{const r=await fetch(ICS_FN+encodeURIComponent(f.url),{headers:{apikey:cfg.key,Authorization:"Bearer "+cfg.key}});
+    if(!r.ok)throw new Error((await r.text()).slice(0,120)||r.status);all.push(...expand(parseICS(await r.text()),f));delete extErr[f.id]}catch(e){extErr[f.id]=String(e.message||e)}}));
+  EXT=all;render()}
+setInterval(()=>loadFeeds(),15*60e3);
+function allEvents(){return D.events.concat(EXT)}
+function upcoming(){const t=ymd(new Date());return allEvents().filter(e=>e.date>=t).sort((a,b)=>(a.date+(a.time||"")).localeCompare(b.date+(b.time||"")))}
 
 const V={
 home(){
@@ -225,23 +257,23 @@ polls(){
 },
 cal(){
   const y=calMonth.getFullYear(),mo=calMonth.getMonth(),first=new Date(y,mo,1).getDay(),n=new Date(y,mo+1,0).getDate(),t=ymd(new Date());
-  const has=new Set(D.events.map(e=>e.date));
+  const has=new Set(allEvents().map(e=>e.date));
   D.birthdays.forEach(b=>{const p=b.date.split("-");has.add(`${y}-${p[1]}-${p[2]}`)});
   let cells=["S","M","T","W","T","F","S"].map(d=>`<div class="mut">${d}</div>`).join("")+"<div></div>".repeat(first);
   for(let d=1;d<=n;d++){const k=`${y}-${String(mo+1).padStart(2,"0")}-${String(d).padStart(2,"0")}`;
     cells+=`<div class="d ${k===t?"t":""} ${k===calSel?"s":""}" onclick="calSel='${k}';render()">${d}${has.has(k)?'<i class="dot"></i>':""}</div>`}
-  const day=D.events.filter(e=>e.date===calSel).sort((a,b)=>(a.time||"").localeCompare(b.time||""));
+  const day=allEvents().filter(e=>e.date===calSel).sort((a,b)=>(a.time||"").localeCompare(b.time||""));
   const bd=D.birthdays.filter(b=>b.date.slice(5)===calSel.slice(5));
   return `<div class="card"><div class="row"><button class="g" style="flex:0" onclick="calMonth.setMonth(calMonth.getMonth()-1);render()">‹</button>
   <h2 style="text-align:center;margin:0">${calMonth.toLocaleDateString(undefined,{month:"long",year:"numeric"})}</h2>
   <button class="g" style="flex:0" onclick="calMonth.setMonth(calMonth.getMonth()+1);render()">›</button></div><br><div class="cal">${cells}</div></div>
   <div class="card"><h2>${fmtD(calSel)}</h2>${bd.map(b=>`<p>🎂 <b>${esc(b.name)}'s birthday</b></p>`).join("")}
-  ${day.map(e=>`<div class="chk" data-lp="events:${e.id}"><div class="tx"><b>${esc(e.title)}</b><div class="mut">${e.time?fmtT(e.time)+" · ":""}${e.who?esc(e.who)+" · ":""}added by ${esc(e.by)}</div>${e.notes?`<div class="mut">${esc(e.notes)}</div>`:""}</div><button class="x" onclick="del('events','${e.id}')">×</button></div>`).join("")||(bd.length?"":'<p class="mut">No events.</p>')}</div>
+  ${day.map(e=>e.ext?`<div class="chk"><div class="tx"><b>${esc(e.title)}</b><div class="mut">${e.time?fmtT(e.time)+" · ":"All day · "}${chip(e.who)} <span>from ${e.src==="outlook"?"Outlook":"Google"}</span></div>${e.notes?`<div class="mut">📍 ${esc(e.notes)}</div>`:""}</div></div>`:`<div class="chk" data-lp="events:${e.id}"><div class="tx"><b>${esc(e.title)}</b><div class="mut">${e.time?fmtT(e.time)+" · ":""}${e.who?esc(e.who)+" · ":""}added by ${esc(e.by)}</div>${e.notes?`<div class="mut">${esc(e.notes)}</div>`:""}</div><button class="x" onclick="del('events','${e.id}')">×</button></div>`).join("")||(bd.length?"":'<p class="mut">No events.</p>')}</div>
   <div class="card"><h2>Add event</h2><input id="eT" placeholder="Event name"><div class="row"><input id="eD" type="date" value="${calSel}"><input id="eTm" type="time"></div>
   <select id="eW"><option value="">Whole family</option>${D.members.map(m=>`<option>${esc(m.name)}</option>`).join("")}</select>
   <select id="eR"><option value="">Doesn't repeat</option><option value="7">Every week (8 weeks)</option><option value="14">Every 2 weeks (8 times)</option></select>
   <input id="eN" placeholder="Notes (optional)"><button class="b" onclick="postEvent()">Add to calendar</button></div>
-  <div class="card"><h2>Upcoming</h2>${upcoming().slice(0,10).map(e=>`<p>${fmtD(e.date)} — <b>${esc(e.title)}</b>${e.time?" "+fmtT(e.time):""}</p>`).join("")||'<p class="mut">Nothing yet.</p>'}</div>`;
+  ${feedsHTML()}<div class="card"><h2>Upcoming</h2>${upcoming().slice(0,10).map(e=>`<p>${fmtD(e.date)} — <b>${esc(e.title)}</b>${e.time?" "+fmtT(e.time):""}</p>`).join("")||'<p class="mut">Nothing yet.</p>'}</div>`;
 },
 chores(){
   const open=D.chores.filter(c=>!c.done),done=D.chores.filter(c=>c.done).sort((a,b)=>b.at-a.at).slice(0,15);
@@ -272,6 +304,17 @@ settings(){
   ${ADMIN?`<div class="card"><button class="g" onclick="localStorage.removeItem('fh_meId');meId=null;pickMe()">Switch person on this phone</button> <button class="g" onclick="ADMIN=false;ls.set('fh_adm',false);render()">Hide admin mode</button></div>`:""}`;
 }};
 
+let feedKind="google";
+function feedsHTML(){const mine=D.feeds.filter(f=>f.who===me||ADMIN);
+  const steps=feedKind==="google"?`<ol class="mut" style="padding-left:18px;line-height:1.6"><li>On a computer (or phone browser in desktop mode) open <b>calendar.google.com</b></li><li>⚙️ <b>Settings</b> → under "Settings for my calendars" click your calendar</li><li>Scroll to <b>Integrate calendar</b></li><li>Copy <b>Secret address in iCal format</b> (ends in <i>basic.ics</i>)</li></ol>`
+   :`<ol class="mut" style="padding-left:18px;line-height:1.6"><li>Open <b>outlook.com</b> (or Outlook on the web for work)</li><li>⚙️ <b>Settings</b> → <b>Calendar</b> → <b>Shared calendars</b></li><li>Under <b>Publish a calendar</b> pick your calendar + "Can view all details" → <b>Publish</b></li><li>Copy the <b>ICS</b> link</li></ol>`;
+  return `<div class="card"><h2>🔗 Sync your calendar</h2><p class="mut">Bring your Google or Outlook events into Family Hub. They show up for the whole family and refresh automatically.</p><br>
+  ${mine.map(f=>`<div class="chk"><div class="tx"><b>${f.kind==="outlook"?"📧 Outlook":"📅 Google"}</b> · ${chip(f.who)}<div class="mut">${extErr[f.id]?"⚠️ "+esc(extErr[f.id]):EXT.filter(e=>e.who===f.who&&e.src===f.kind).length+" events synced"}</div></div><button class="x" onclick="if(confirm('Disconnect this calendar?'))rm('${f.id}').then(()=>loadFeeds(true))">×</button></div>`).join("")}
+  <div class="seg" style="margin-top:8px"><button class="${feedKind==="google"?"on":""}" onclick="feedKind='google';render()">📅 Google</button><button class="${feedKind==="outlook"?"on":""}" onclick="feedKind='outlook';render()">📧 Outlook</button></div>
+  ${steps}<input id="fU" placeholder="Paste the private calendar link here"><button class="b" onclick="addFeed()">Connect</button>
+  ${D.feeds.length?`<button class="g" style="margin-left:6px" onclick="loadFeeds(true)">↻ Refresh</button>`:""}</div>`}
+async function addFeed(){let u=val("#fU").replace(/^webcal:/,"https:");if(!/^https:\/\/(calendar\.google\.com|outlook\.(office365|live|office)\.com)\//.test(u))return alert("That doesn't look like a Google or Outlook calendar link. Copy the private iCal / ICS address.");
+  await add("feeds",{url:u,kind:feedKind,who:me});clr("#fU");document.activeElement?.blur();loadFeeds(true)}
 function noteHTML(n,full){return `${full&&(n.by===me)?`<button class="x" onclick="del('notes','${n.id}')">×</button>`:""}${chip(n.by)} → ${n.to==="Everyone"?"<b>Everyone</b>":chip(n.to)} <span class="mut">${ago(n.at)}</span>${n.pin?" 📌":""}
   <p style="margin:8px 0;white-space:pre-wrap">${esc(n.text)}</p>${full?`<div>${Object.keys(n.hearts||{}).map(k=>"❤️").join("")}<button class="g" onclick="heart('${n.id}')">❤️ ${Object.keys(n.hearts||{}).length||""}</button> <button class="g" onclick="upd('notes','${n.id}',{pin:${!n.pin}})">${n.pin?"Unpin":"📌 Pin"}</button></div>`:""}`}
 function fmtD(s,noYr){const[y,m,d]=s.split("-").map(Number);return new Date(y,m-1,d).toLocaleDateString(undefined,{weekday:noYr?undefined:"short",month:"short",day:"numeric"})}
