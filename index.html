@@ -116,7 +116,7 @@ const esc=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&
 const ls={get:(k,d)=>{try{return JSON.parse(localStorage.getItem(k))??d}catch{return d}},set:(k,v)=>{try{localStorage.setItem(k,JSON.stringify(v))}catch{}}};
 const cfg=SUPABASE||ls.get("fh_sb",null);
 let db,me=null,meId=ls.get("fh_meId",null),ADMIN=ls.get("fh_adm",false),tab=ls.get("fh_tab","home");
-const D={members:[],notes:[],polls:[],events:[],chores:[],groceries:[],birthdays:[],photos:[]};
+const D={log:[],members:[],notes:[],polls:[],events:[],chores:[],groceries:[],birthdays:[],photos:[]};
 let calMonth=new Date();calMonth.setDate(1);let calSel=ymd(new Date());
 
 function ymd(d){return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0")}
@@ -186,7 +186,7 @@ function pickMe(){
   $("#nav").innerHTML="";$("#meBtn").classList.add("hide");
   $("#app").innerHTML=`<div class="card"><h2>Who are you?</h2><div class="who">${D.members.map(m=>`<button style="background:${m.color};box-shadow:0 0 14px ${m.color}88" onclick="setMe('${m.id}')">${face(m,72)}<br>${esc(m.name)}</button>`).join("")||'<p class="mut">Loading…</p>'}</div></div>`;
 }
-function setMe(id){meId=id;ls.set("fh_meId",id);ls.set("fh_pickAt",Date.now());render()}
+function setMe(id){meId=id;ls.set("fh_meId",id);ls.set("fh_pickAt",Date.now());render();logEv("picked");ls.set("fh_lastLog",Date.now())}
 
 
 function nextBday(b){const t=new Date();t.setHours(0,0,0,0);const [y,mo,da]=b.date.split("-").map(Number);let n=new Date(t.getFullYear(),mo-1,da);if(n<t)n.setFullYear(t.getFullYear()+1);return{days:Math.round((n-t)/864e5),age:y>1900?n.getFullYear()-y:null}}
@@ -263,7 +263,7 @@ photos(){
 },
 settings(){
   return `${ADMIN?`<div class="card"><h2>Family members</h2>${D.members.map(m=>`<div class="chk" data-lp="members:${m.id}"><span style="font-size:24px">${face(m,36)}</span><div class="tx"><b style="color:${m.color}">${esc(m.name)}</b></div><button class="x" onclick="del('members','${m.id}')">×</button></div>`).join("")}
-  <br><div class="row"><input id="mE" placeholder="Emoji" style="flex:0 0 70px"><input id="mN" placeholder="Name"><input id="mC" type="color" value="#4a7bd0" style="flex:0 0 50px;padding:2px"></div><button class="b" onclick="postMem()">Add member</button><p class="mut">Hold a member to rename, recolor, or make their phone pick again.</p></div>`:""}
+  <br><div class="row"><input id="mE" placeholder="Emoji" style="flex:0 0 70px"><input id="mN" placeholder="Name"><input id="mC" type="color" value="#4a7bd0" style="flex:0 0 50px;padding:2px"></div><button class="b" onclick="postMem()">Add member</button><p class="mut">Hold a member to rename, recolor, or make their phone pick again.</p></div>${activityHTML()}`:""}
   ${guideHTML()}
   ${ADMIN?`<div class="card"><button class="g" onclick="localStorage.removeItem('fh_meId');meId=null;pickMe()">Switch person on this phone</button> <button class="g" onclick="ADMIN=false;ls.set('fh_adm',false);render()">Hide admin mode</button></div>`:""}`;
 }};
@@ -341,6 +341,18 @@ function saveEdit(c,id){const o={};document.querySelectorAll("#sheet [data-k]").
 
 function showCrest(){if(document.getElementById("crest"))return;const d=document.createElement("div");d.id="crest";d.innerHTML='<img src="logo.png" alt="Family crest"><p>Tap anywhere to close</p>';d.onclick=()=>d.remove();document.body.appendChild(d)}
 setTimeout(()=>{const sp=document.getElementById("splash");if(!sp)return;sp.classList.add("out");setTimeout(()=>sp.remove(),500)},1300);
+let devId=ls.get("fh_dev",null);if(!devId){devId=Math.random().toString(36).slice(2,8);ls.set("fh_dev",devId)}
+function uaShort(){const u=navigator.userAgent;const m=u.match(/\(([^)]+)\)/);let d=/iPhone/.test(u)?"iPhone":/iPad/.test(u)?"iPad":/Android/.test(u)?((m&&m[1].split(";").map(x=>x.trim()).find(x=>/^(SM-|Pixel|moto|LM-|SAMSUNG)/i.test(x)))||"Android"):/Mac/.test(u)?"Mac":/Windows/.test(u)?"Windows PC":"Device";
+  const app=(matchMedia("(display-mode: standalone)").matches||navigator.standalone)?"app":"browser";return d+" · "+app}
+function logEv(ev){if(!db||!me)return;ins("log",{who:me,ev,dev:devId,ua:uaShort(),at:Date.now()})}
+function logOpen(){if(!me)return;if(Date.now()-ls.get("fh_lastLog",0)<20*60e3)return;ls.set("fh_lastLog",Date.now());logEv("opened")}
+document.addEventListener("visibilitychange",()=>{if(!document.hidden)setTimeout(logOpen,1500)});
+setTimeout(logOpen,2500);
+function activityHTML(){const L=[...D.log].sort((a,b)=>b.at-a.at),wk=Date.now()-7*864e5;
+  const rows=D.members.map(m=>{const mine=L.filter(x=>x.who===m.name);const last=mine[0];const n=mine.filter(x=>x.at>wk).length;const devs=new Set(mine.map(x=>x.dev)).size;
+    return `<div class="chk"><span>${face(m,34)}</span><div class="tx"><b>${esc(m.name)}</b><div class="mut">${last?`Last seen ${ago(last.at)} · ${esc(last.ua)}`:"Never opened"}</div></div><div style="text-align:right"><b>${n}</b><div class="mut">opens/wk${devs>1?` · ${devs} devices`:""}</div></div></div>`}).join("");
+  const feed=L.slice(0,40).map(x=>`<div class="chk"><div class="tx">${chip(x.who)} ${x.ev==="picked"?"<b>picked their name</b>":"opened the app"}<div class="mut">${new Date(x.at).toLocaleString(undefined,{weekday:"short",month:"short",day:"numeric",hour:"numeric",minute:"2-digit"})} · ${esc(x.ua)} · device ${esc(x.dev)}</div></div></div>`).join("");
+  return `<div class="card"><h2>📈 Activity</h2>${rows}<br><h2>Recent</h2>${feed||'<p class="mut">No activity yet.</p>'}<br><button class="g" onclick="if(confirm('Clear the whole activity log?'))D.log.forEach(x=>rm(x.id))">Clear log</button></div>`}
 if(!cfg)setup();else start();
 if("serviceWorker"in navigator)navigator.serviceWorker.register("sw.js").catch(()=>{});
 </script>
