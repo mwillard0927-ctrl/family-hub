@@ -134,7 +134,7 @@ function pickMe(){
   $("#app").innerHTML=`<div class="card"><h2>Who are you?</h2><div class="who">${D.members.map(m=>`<button style="background:${m.color}" onclick="setMe('${esc(m.name)}')">${m.emoji}<br>${esc(m.name)}</button>`).join("")||'<p class="mut">Loading…</p>'}</div></div>`;
 }
 function setMe(n){me=n;ls.set("fh_me",n);render()}
-$("#meBtn").onclick=()=>{me=null;pickMe()};
+
 
 function nextBday(b){const t=new Date();t.setHours(0,0,0,0);const [y,mo,da]=b.date.split("-").map(Number);let n=new Date(t.getFullYear(),mo-1,da);if(n<t)n.setFullYear(t.getFullYear()+1);return{days:Math.round((n-t)/864e5),age:y>1900?n.getFullYear()-y:null}}
 function upcoming(){const t=ymd(new Date());return D.events.filter(e=>e.date>=t).sort((a,b)=>(a.date+(a.time||"")).localeCompare(b.date+(b.time||"")))}
