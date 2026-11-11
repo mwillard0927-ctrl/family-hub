@@ -49,11 +49,16 @@ nav button.on{color:var(--acc);font-weight:700}
 .who{display:grid;grid-template-columns:1fr 1fr;gap:10px}
 .who button{padding:18px;border-radius:14px;border:none;color:#fff;font-size:17px;font-weight:600}
 .hide{display:none}
+[data-lp]{-webkit-touch-callout:none;-webkit-user-select:none;user-select:none}
+.lpOn{outline:2px dashed var(--acc);outline-offset:2px}
+#sheet{position:fixed;inset:0;background:rgba(0,0,0,.4);z-index:20;display:flex;align-items:flex-end}
+#sheet .card{width:100%;max-height:85vh;overflow:auto;border-radius:16px 16px 0 0;margin:0;padding-bottom:calc(16px + env(safe-area-inset-bottom))}
+label.f{font-size:12px;color:var(--mut);display:block}
 .big{font-size:28px;font-weight:700;color:var(--acc)}
 </style>
 </head>
 <body>
-<header><h1>🏡 Family Hub</h1><button class="me" id="meBtn"></button></header>
+<header><h1 id="ttl" data-lp="admin">🏡 Family Hub</h1><button class="me" id="meBtn"></button></header>
 <main id="app"></main>
 <nav id="nav"></nav>
 
@@ -71,7 +76,7 @@ const $=s=>document.querySelector(s);
 const esc=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 const ls={get:(k,d)=>{try{return JSON.parse(localStorage.getItem(k))??d}catch{return d}},set:(k,v)=>{try{localStorage.setItem(k,JSON.stringify(v))}catch{}}};
 const cfg=SUPABASE||ls.get("fh_sb",null);
-let db,me=ls.get("fh_me",null),tab=ls.get("fh_tab","home");
+let db,me=null,meId=ls.get("fh_meId",null),ADMIN=ls.get("fh_adm",false),tab=ls.get("fh_tab","home");
 const D={members:[],notes:[],polls:[],events:[],chores:[],groceries:[],birthdays:[],photos:[]};
 let calMonth=new Date();calMonth.setDate(1);let calSel=ymd(new Date());
 
@@ -122,7 +127,9 @@ function put(row){const c=row.coll;if(!D[c])return;const o={...row.data,id:row.i
 async function resync(){const r=await db.from("items").select("*");if(r.error)return;for(const c in D)D[c]=[];r.data.forEach(put);render()}
 
 function render(){
-  if(!me||!D.members.find(m=>m.name===me))return pickMe();
+  const mm=D.members.find(m=>m.id===meId);
+  if(!mm||(mm.resetAt&&mm.resetAt>ls.get("fh_pickAt",0)))return pickMe();
+  me=mm.name;
   const m=mem(me);$("#meBtn").classList.remove("hide");$("#meBtn").textContent=m.emoji+" "+m.name;
   $("#nav").innerHTML=TABS.map(([k,i,l])=>`<button class="${tab===k?"on":""}" onclick="go('${k}')"><span>${i}</span>${l}</button>`).join("");
   const a=document.activeElement;if(a&&(a.tagName==="INPUT"||a.tagName==="TEXTAREA")&&a.value)return; // don't wipe typing
@@ -131,9 +138,9 @@ function render(){
 function go(k){tab=k;ls.set("fh_tab",k);document.activeElement?.blur();render();scrollTo(0,0)}
 function pickMe(){
   $("#nav").innerHTML="";$("#meBtn").classList.add("hide");
-  $("#app").innerHTML=`<div class="card"><h2>Who are you?</h2><div class="who">${D.members.map(m=>`<button style="background:${m.color}" onclick="setMe('${esc(m.name)}')">${m.emoji}<br>${esc(m.name)}</button>`).join("")||'<p class="mut">Loading…</p>'}</div></div>`;
+  $("#app").innerHTML=`<div class="card"><h2>Who are you?</h2><div class="who">${D.members.map(m=>`<button style="background:${m.color}" onclick="setMe('${m.id}')">${m.emoji}<br>${esc(m.name)}</button>`).join("")||'<p class="mut">Loading…</p>'}</div></div>`;
 }
-function setMe(n){me=n;ls.set("fh_me",n);render()}
+function setMe(id){meId=id;ls.set("fh_meId",id);ls.set("fh_pickAt",Date.now());render()}
 
 
 function nextBday(b){const t=new Date();t.setHours(0,0,0,0);const [y,mo,da]=b.date.split("-").map(Number);let n=new Date(t.getFullYear(),mo-1,da);if(n<t)n.setFullYear(t.getFullYear()+1);return{days:Math.round((n-t)/864e5),age:y>1900?n.getFullYear()-y:null}}
@@ -154,13 +161,13 @@ notes(){
   const list=D.notes.filter(n=>n.to==="Everyone"||n.to===me||n.by===me).sort((a,b)=>(b.pin?1:0)-(a.pin?1:0)||b.at-a.at);
   return `<div class="card"><h2>Leave a note</h2><select id="nTo"><option>Everyone</option>${D.members.filter(m=>m.name!==me).map(m=>`<option>${esc(m.name)}</option>`).join("")}</select>
   <textarea id="nTx" placeholder="Write a note…"></textarea><button class="b" onclick="postNote()">Post</button></div>
-  ${list.map(n=>`<div class="card">${noteHTML(n,true)}</div>`).join("")||'<p class="mut">No notes yet.</p>'}`;
+  ${list.map(n=>`<div class="card" data-lp="notes:${n.id}">${noteHTML(n,true)}</div>`).join("")||'<p class="mut">No notes yet.</p>'}`;
 },
 polls(){
   return `<div class="card"><h2>New poll</h2><input id="pQ" placeholder="Question (e.g. Pizza or tacos Friday?)">
   <textarea id="pO" placeholder="Options, one per line"></textarea><button class="b" onclick="postPoll()">Create poll</button></div>
   ${D.polls.sort((a,b)=>b.at-a.at).map(p=>{const v=p.votes||{},tot=Object.keys(v).length;
-    return `<div class="card"><button class="x" onclick="del('polls','${p.id}')">×</button>${chip(p.by)}<span class="mut">${ago(p.at)}</span><h2 style="margin-top:8px">${esc(p.q)}</h2>
+    return `<div class="card" data-lp="polls:${p.id}"><button class="x" onclick="del('polls','${p.id}')">×</button>${chip(p.by)}<span class="mut">${ago(p.at)}</span><h2 style="margin-top:8px">${esc(p.q)}</h2>
     ${p.opts.map((o,i)=>{const who=Object.keys(v).filter(k=>v[k]===i),pc=tot?Math.round(who.length/tot*100):0;
       return `<div class="opt ${v[me]===i?"v":""}" onclick="vote('${p.id}',${i})"><div class="row"><b>${esc(o)}</b><span style="text-align:right" class="mut">${who.length} · ${pc}%</span></div><div class="bar"><i style="width:${pc}%"></i></div>${who.map(chip).join("")}</div>`}).join("")}
     <p class="mut">${tot} of ${D.members.length} voted · tap an option to vote or change</p></div>`}).join("")}`;
@@ -178,7 +185,7 @@ cal(){
   <h2 style="text-align:center;margin:0">${calMonth.toLocaleDateString(undefined,{month:"long",year:"numeric"})}</h2>
   <button class="g" style="flex:0" onclick="calMonth.setMonth(calMonth.getMonth()+1);render()">›</button></div><br><div class="cal">${cells}</div></div>
   <div class="card"><h2>${fmtD(calSel)}</h2>${bd.map(b=>`<p>🎂 <b>${esc(b.name)}'s birthday</b></p>`).join("")}
-  ${day.map(e=>`<div class="chk"><div class="tx"><b>${esc(e.title)}</b><div class="mut">${e.time?fmtT(e.time)+" · ":""}${e.who?esc(e.who)+" · ":""}added by ${esc(e.by)}</div>${e.notes?`<div class="mut">${esc(e.notes)}</div>`:""}</div><button class="x" onclick="del('events','${e.id}')">×</button></div>`).join("")||(bd.length?"":'<p class="mut">No events.</p>')}</div>
+  ${day.map(e=>`<div class="chk" data-lp="events:${e.id}"><div class="tx"><b>${esc(e.title)}</b><div class="mut">${e.time?fmtT(e.time)+" · ":""}${e.who?esc(e.who)+" · ":""}added by ${esc(e.by)}</div>${e.notes?`<div class="mut">${esc(e.notes)}</div>`:""}</div><button class="x" onclick="del('events','${e.id}')">×</button></div>`).join("")||(bd.length?"":'<p class="mut">No events.</p>')}</div>
   <div class="card"><h2>Add event</h2><input id="eT" placeholder="Event name"><div class="row"><input id="eD" type="date" value="${calSel}"><input id="eTm" type="time"></div>
   <select id="eW"><option value="">Whole family</option>${D.members.map(m=>`<option>${esc(m.name)}</option>`).join("")}</select>
   <select id="eR"><option value="">Doesn't repeat</option><option value="7">Every week (8 weeks)</option><option value="14">Every 2 weeks (8 times)</option></select>
@@ -189,29 +196,29 @@ chores(){
   const open=D.chores.filter(c=>!c.done),done=D.chores.filter(c=>c.done).sort((a,b)=>b.at-a.at).slice(0,15);
   return `<div class="card"><h2>Add chore</h2><input id="cT" placeholder="e.g. Take out trash"><div class="row"><select id="cTo">${D.members.map(m=>`<option ${m.name===me?"selected":""}>${esc(m.name)}</option>`).join("")}<option value="">Anyone</option></select><input id="cD" type="date"></div>
   <button class="b" onclick="postChore()">Add</button></div>
-  <div class="card"><h2>To do (${open.length})</h2>${open.map(c=>`<div class="chk"><input type="checkbox" onchange="upd('chores','${c.id}',{done:true,doneBy:me})"><div class="tx">${esc(c.text)}<div>${c.to?chip(c.to):'<span class="mut">Anyone</span>'}${c.due?`<span class="mut"> due ${fmtD(c.due)}</span>`:""}</div></div><button class="x" onclick="del('chores','${c.id}')">×</button></div>`).join("")||'<p class="mut">Nothing to do 🎉</p>'}</div>
+  <div class="card"><h2>To do (${open.length})</h2>${open.map(c=>`<div class="chk" data-lp="chores:${c.id}"><input type="checkbox" onchange="upd('chores','${c.id}',{done:true,doneBy:me})"><div class="tx">${esc(c.text)}<div>${c.to?chip(c.to):'<span class="mut">Anyone</span>'}${c.due?`<span class="mut"> due ${fmtD(c.due)}</span>`:""}</div></div><button class="x" onclick="del('chores','${c.id}')">×</button></div>`).join("")||'<p class="mut">Nothing to do 🎉</p>'}</div>
   <div class="card"><h2>Recently done</h2>${done.map(c=>`<div class="chk done"><input type="checkbox" checked onchange="upd('chores','${c.id}',{done:false})"><div class="tx">${esc(c.text)} <span class="mut">by ${esc(c.doneBy||"")}</span></div><button class="x" onclick="del('chores','${c.id}')">×</button></div>`).join("")||'<p class="mut">—</p>'}</div>`;
 },
 grocery(){
   const l=D.groceries.sort((a,b)=>(a.got?1:0)-(b.got?1:0)||a.at-b.at);
   return `<div class="card"><div class="row"><input id="gT" placeholder="Add item…" onkeydown="if(event.key==='Enter')postGroc()"><button class="b" style="flex:0" onclick="postGroc()">Add</button></div>
-  ${l.map(g=>`<div class="chk ${g.got?"done":""}"><input type="checkbox" ${g.got?"checked":""} onchange="upd('groceries','${g.id}',{got:this.checked})"><div class="tx">${esc(g.text)} <span class="mut">· ${esc(g.by)}</span></div><button class="x" onclick="rm('${g.id}')">×</button></div>`).join("")||'<p class="mut">List is empty.</p>'}
+  ${l.map(g=>`<div class="chk ${g.got?"done":""}" data-lp="groceries:${g.id}"><input type="checkbox" ${g.got?"checked":""} onchange="upd('groceries','${g.id}',{got:this.checked})"><div class="tx">${esc(g.text)} <span class="mut">· ${esc(g.by)}</span></div><button class="x" onclick="rm('${g.id}')">×</button></div>`).join("")||'<p class="mut">List is empty.</p>'}
   ${l.some(g=>g.got)?`<br><button class="g" onclick="clearGot()">Clear checked items</button>`:""}</div>`;
 },
 bdays(){
   const l=D.birthdays.map(b=>({...b,...nextBday(b)})).sort((a,b)=>a.days-b.days);
   return `<div class="card"><h2>Add birthday / anniversary</h2><input id="bN" placeholder="Name (e.g. Grandma)"><input id="bD" type="date"><button class="b" onclick="postBday()">Save</button></div>
-  ${l.map(b=>`<div class="card"><button class="x" onclick="del('birthdays','${b.id}')">×</button><b>${esc(b.name)}</b> <span class="mut">${fmtD(b.date,true)}</span><div class="big">${b.days===0?"🎉 Today!":b.days+" days"}</div>${b.age?`<span class="mut">turns ${b.age}</span>`:""}</div>`).join("")}`;
+  ${l.map(b=>`<div class="card" data-lp="birthdays:${b.id}"><button class="x" onclick="del('birthdays','${b.id}')">×</button><b>${esc(b.name)}</b> <span class="mut">${fmtD(b.date,true)}</span><div class="big">${b.days===0?"🎉 Today!":b.days+" days"}</div>${b.age?`<span class="mut">turns ${b.age}</span>`:""}</div>`).join("")}`;
 },
 photos(){
   return `<div class="card"><h2>Post a photo</h2><input id="phF" type="file" accept="image/*"><input id="phC" placeholder="Caption"><button class="b" onclick="postPhoto()">Post</button><p class="mut" id="phS"></p></div>
-  <div class="photos">${D.photos.sort((a,b)=>b.at-a.at).map(p=>`<div class="card" style="padding:6px"><img src="${p.img}" alt=""><p style="margin:6px 2px 2px">${esc(p.cap)}</p><div class="mut">${esc(p.by)} · ${ago(p.at)}${p.by===me?` · <a onclick="del('photos','${p.id}')">delete</a>`:""}</div></div>`).join("")}</div>`;
+  <div class="photos">${D.photos.sort((a,b)=>b.at-a.at).map(p=>`<div class="card" style="padding:6px" data-lp="photos:${p.id}"><img src="${p.img}" alt=""><p style="margin:6px 2px 2px">${esc(p.cap)}</p><div class="mut">${esc(p.by)} · ${ago(p.at)}${p.by===me?` · <a onclick="del('photos','${p.id}')">delete</a>`:""}</div></div>`).join("")}</div>`;
 },
 settings(){
-  return `<div class="card"><h2>Family members</h2>${D.members.map(m=>`<div class="chk"><span style="font-size:24px">${m.emoji}</span><div class="tx"><b style="color:${m.color}">${esc(m.name)}</b></div><button class="x" onclick="del('members','${m.id}')">×</button></div>`).join("")}
-  <br><div class="row"><input id="mE" placeholder="Emoji" style="flex:0 0 70px"><input id="mN" placeholder="Name"><input id="mC" type="color" value="#4a7bd0" style="flex:0 0 50px;padding:2px"></div><button class="b" onclick="postMem()">Add member</button></div>
+  return `${ADMIN?`<div class="card"><h2>Family members</h2>${D.members.map(m=>`<div class="chk" data-lp="members:${m.id}"><span style="font-size:24px">${m.emoji}</span><div class="tx"><b style="color:${m.color}">${esc(m.name)}</b></div><button class="x" onclick="del('members','${m.id}')">×</button></div>`).join("")}
+  <br><div class="row"><input id="mE" placeholder="Emoji" style="flex:0 0 70px"><input id="mN" placeholder="Name"><input id="mC" type="color" value="#4a7bd0" style="flex:0 0 50px;padding:2px"></div><button class="b" onclick="postMem()">Add member</button><p class="mut">Hold a member to rename, recolor, or make their phone pick again.</p></div>`:""}
   <div class="card"><h2>Install on your phone</h2><p class="mut">iPhone: Safari → Share → Add to Home Screen. Android: Chrome menu → Install app.</p></div>
-  <div class="card"><button class="g" onclick="me=null;localStorage.removeItem('fh_me');pickMe()">Switch person on this phone</button></div>`;
+  ${ADMIN?`<div class="card"><button class="g" onclick="localStorage.removeItem('fh_meId');meId=null;pickMe()">Switch person on this phone</button> <button class="g" onclick="ADMIN=false;ls.set('fh_adm',false);render()">Hide admin mode</button></div>`:""}`;
 }};
 
 function noteHTML(n,full){return `${full&&(n.by===me)?`<button class="x" onclick="del('notes','${n.id}')">×</button>`:""}${chip(n.by)} → ${n.to==="Everyone"?"<b>Everyone</b>":chip(n.to)} <span class="mut">${ago(n.at)}</span>${n.pin?" 📌":""}
@@ -235,6 +242,31 @@ function postMem(){const n=val("#mN");if(!n)return;ins("members",{name:n,emoji:v
 function postPhoto(){const f=$("#phF").files[0];if(!f)return;$("#phS").textContent="Uploading…";
   const img=new Image();img.onload=()=>{const s=Math.min(1,900/Math.max(img.width,img.height)),c=document.createElement("canvas");c.width=img.width*s;c.height=img.height*s;c.getContext("2d").drawImage(img,0,0,c.width,c.height);
     add("photos",{img:c.toDataURL("image/jpeg",.7),cap:val("#phC")}).then(()=>{$("#phS").textContent="";clr("#phC");$("#phF").value=""})};img.src=URL.createObjectURL(f)}
+
+const ADMIN_PIN="0927";
+let lpT=null,lpEl=null;
+document.addEventListener("pointerdown",e=>{const el=e.target.closest("[data-lp]");if(!el)return;
+  const k=el.dataset.lp;if(k!=="admin"&&!ADMIN)return;lpEl=el;
+  lpT=setTimeout(()=>{lpT=null;navigator.vibrate?.(30);el.classList.add("lpOn");setTimeout(()=>el.classList.remove("lpOn"),300);
+    if(k==="admin"){if(ADMIN)return;if(prompt("PIN")===ADMIN_PIN){ADMIN=true;ls.set("fh_adm",true);navigator.vibrate?.([30,60,30]);render()}return}
+    const[c,id]=k.split(":");editItem(c,id)},650)});
+["pointerup","pointercancel","pointermove"].forEach(t=>document.addEventListener(t,e=>{if(t==="pointermove"&&lpEl&&Math.abs(e.movementX)+Math.abs(e.movementY)<4)return;clearTimeout(lpT);lpT=null}));
+document.addEventListener("contextmenu",e=>{if(e.target.closest("[data-lp]"))e.preventDefault()});
+document.addEventListener("click",e=>{if(e.target.closest(".lpOn"))e.stopPropagation()},true);
+const LABEL={text:"Text",to:"To / assigned to",q:"Question",opts:"Options (one per line)",title:"Title",date:"Date (YYYY-MM-DD)",time:"Time (HH:MM)",who:"For",notes:"Notes",due:"Due (YYYY-MM-DD)",name:"Name",emoji:"Emoji",color:"Color",cap:"Caption",by:"Posted by"};
+function editItem(c,id){const it=D[c].find(x=>x.id===id);if(!it)return;
+  const keys=Object.keys(LABEL).filter(k=>k in it);
+  const box=document.createElement("div");box.id="sheet";
+  box.innerHTML=`<div class="card"><h2>✏️ Edit ${c.replace(/s$/,"")}</h2>${keys.map(k=>`<label class="f">${LABEL[k]}</label>${k==="opts"?`<textarea data-k="opts">${esc(it.opts.join("\n"))}</textarea>`:k==="color"?`<input data-k="color" type="color" value="${esc(it.color)}">`:k==="text"||k==="notes"?`<textarea data-k="${k}">${esc(it[k])}</textarea>`:`<input data-k="${k}" value="${esc(it[k])}">`}`).join("")}
+  ${c==="polls"?`<button class="g" onclick="upd('polls','${id}',{votes:{}});closeSheet()">Clear all votes</button><br><br>`:""}
+  ${c==="members"?`<button class="g" onclick="upd('members','${id}',{resetAt:Date.now()});closeSheet();alert('Their phone will ask them to pick a name again.')">Make their phone pick a name again</button><br><br>`:""}
+  <div class="row"><button class="b" onclick="saveEdit('${c}','${id}')">Save</button><button class="g" onclick="closeSheet()">Cancel</button><button class="g" style="color:var(--red)" onclick="if(confirm('Delete permanently?')){rm('${id}');closeSheet()}">Delete</button></div></div>`;
+  box.onclick=e=>{if(e.target===box)closeSheet()};document.body.appendChild(box)}
+function closeSheet(){document.getElementById("sheet")?.remove()}
+function saveEdit(c,id){const o={};document.querySelectorAll("#sheet [data-k]").forEach(el=>{const k=el.dataset.k;o[k]=k==="opts"?el.value.split("\n").map(x=>x.trim()).filter(Boolean):el.value});
+  const old=D[c].find(x=>x.id===id);
+  if(c==="members"&&o.name&&o.name!==old.name){const on=old.name;for(const cc of Object.keys(D))if(cc!=="members")D[cc].forEach(x=>{const ch={};if(x.by===on)ch.by=o.name;if(x.to===on)ch.to=o.name;if(x.who===on)ch.who=o.name;if(x.doneBy===on)ch.doneBy=o.name;if(Object.keys(ch).length)upd(cc,x.id,ch)})}
+  upd(c,id,o);closeSheet()}
 
 if(!cfg)setup();else start();
 if("serviceWorker"in navigator)navigator.serviceWorker.register("sw.js").catch(()=>{});
