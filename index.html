@@ -3,44 +3,47 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cut">
-<meta name="theme-color" content="#2f6f5e">
+<meta name="theme-color" content="#0b0d1f">
+<link rel="apple-touch-icon" href="icon-180.png">
+<link rel="icon" href="icon-64.png">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <title>Family Hub</title>
 <link rel="manifest" href="manifest.json">
 <style>
-:root{--bg:#f6f3ee;--card:#fff;--ink:#22302b;--mut:#7a857f;--acc:#2f6f5e;--acc2:#e8f1ee;--line:#e5e0d8;--red:#c0483a}
+:root{--bg:#05060d;--card:#10132a;--ink:#e9ebff;--mut:#8f94c2;--acc:#7b6bff;--acc2:#1c2150;--line:#262c58;--red:#ff5c86;--blue:#3fb8ff;--pur:#b45cff;--grad:linear-gradient(135deg,#2fd2ff,#4f6dff 50%,#b450ff)}
 *{box-sizing:border-box;margin:0;padding:0}
-body{font-family:-apple-system,system-ui,Segoe UI,Roboto,sans-serif;background:var(--bg);color:var(--ink);padding-bottom:84px}
-header{position:sticky;top:0;background:var(--acc);color:#fff;padding:14px 16px calc(14px);padding-top:calc(14px + env(safe-area-inset-top));display:flex;justify-content:space-between;align-items:center;z-index:5}
-header h1{font-size:20px}
+body{font-family:-apple-system,system-ui,Segoe UI,Roboto,sans-serif;background:radial-gradient(circle at 50% 0,#141a42 0,var(--bg) 60%) fixed;color:var(--ink);padding-bottom:84px}
+header{position:sticky;top:0;background:linear-gradient(90deg,#070918,#141040 60%,#22104a);border-bottom:1px solid #2a2f66;color:#fff;padding:14px 16px calc(14px);padding-top:calc(14px + env(safe-area-inset-top));display:flex;justify-content:space-between;align-items:center;z-index:5}
+header h1{font-size:20px;display:flex;align-items:center;gap:10px;letter-spacing:.3px}
+header h1 img{width:44px;height:44px;border-radius:11px;box-shadow:0 0 14px rgba(124,92,255,.6)}
 .me{background:rgba(255,255,255,.18);border:none;color:#fff;border-radius:20px;padding:6px 12px;font-size:14px}
 main{padding:14px;max-width:640px;margin:auto}
-.card{background:var(--card);border-radius:14px;padding:14px;margin-bottom:12px;box-shadow:0 1px 3px rgba(0,0,0,.06)}
+.card{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:14px;margin-bottom:12px;box-shadow:0 6px 20px rgba(0,0,0,.35)}
 h2{font-size:17px;margin:4px 0 10px}
 .mut{color:var(--mut);font-size:13px}
-input,textarea,select{width:100%;padding:10px;border:1px solid var(--line);border-radius:10px;font:inherit;margin-bottom:8px;background:#fff}
+input,textarea,select{width:100%;padding:10px;border:1px solid var(--line);border-radius:10px;font:inherit;margin-bottom:8px;background:#0a0c1e;color:var(--ink)}
 textarea{min-height:70px}
-button.b{background:var(--acc);color:#fff;border:none;border-radius:10px;padding:10px 14px;font:inherit;font-weight:600}
-button.g{background:var(--acc2);color:var(--acc);border:none;border-radius:10px;padding:8px 12px;font:inherit}
+button.b{background:var(--grad);box-shadow:0 0 12px rgba(110,90,255,.45);color:#fff;border:none;border-radius:10px;padding:10px 14px;font:inherit;font-weight:600}
+button.g{background:var(--acc2);color:#b7adff;border:none;border-radius:10px;padding:8px 12px;font:inherit}
 button.x{background:none;border:none;color:var(--mut);font-size:18px;float:right}
 .row{display:flex;gap:8px;align-items:center}
 .row>*{flex:1}
-nav{position:fixed;bottom:0;left:0;right:0;background:#fff;border-top:1px solid var(--line);display:flex;overflow-x:auto;padding-bottom:env(safe-area-inset-bottom);z-index:5}
+nav{position:fixed;bottom:0;left:0;right:0;background:#0b0d1f;border-top:1px solid var(--line);display:flex;overflow-x:auto;padding-bottom:env(safe-area-inset-bottom);z-index:5}
 nav button{flex:1;min-width:64px;background:none;border:none;padding:8px 2px;font-size:11px;color:var(--mut)}
 nav button span{display:block;font-size:20px}
-nav button.on{color:var(--acc);font-weight:700}
+nav button.on{color:#c9b8ff;font-weight:700;text-shadow:0 0 10px rgba(160,120,255,.8)}
 .av{width:22px;height:22px;border-radius:50%;vertical-align:middle;margin:-3px 3px -3px -4px;object-fit:cover}
 .chip{display:inline-block;border-radius:12px;padding:2px 8px;font-size:12px;color:#fff;margin-right:4px}
 .bar{height:8px;background:var(--acc2);border-radius:4px;overflow:hidden;margin:4px 0 8px}
-.bar i{display:block;height:100%;background:var(--acc)}
+.bar i{display:block;height:100%;background:var(--grad)}
 .opt{border:1px solid var(--line);border-radius:10px;padding:8px;margin-bottom:6px}
 .opt.v{border-color:var(--acc);background:var(--acc2)}
 .cal{display:grid;grid-template-columns:repeat(7,1fr);gap:3px;text-align:center}
 .cal div{padding:6px 0;border-radius:8px;font-size:14px;min-height:40px}
-.cal .d{background:#fff}
+.cal .d{background:#171b3a}
 .cal .t{outline:2px solid var(--acc)}
-.cal .s{background:var(--acc);color:#fff}
-.cal .dot{display:block;width:6px;height:6px;border-radius:3px;background:var(--red);margin:2px auto 0}
+.cal .s{background:var(--grad);color:#fff}
+.cal .dot{display:block;width:6px;height:6px;border-radius:3px;background:var(--blue);box-shadow:0 0 6px var(--blue);margin:2px auto 0}
 .chk{display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--line)}
 .chk input{width:22px;height:22px;margin:0}
 .chk.done .tx{text-decoration:line-through;color:var(--mut)}
@@ -53,8 +56,8 @@ nav button.on{color:var(--acc);font-weight:700}
 [data-lp]{-webkit-touch-callout:none;-webkit-user-select:none;user-select:none}
 .lpOn{outline:2px dashed var(--acc);outline-offset:2px}
 #sheet{position:fixed;inset:0;background:rgba(0,0,0,.4);z-index:20;display:flex;align-items:flex-end}
-#sheet .card{width:100%;max-height:85vh;overflow:auto;border-radius:16px 16px 0 0;margin:0;padding-bottom:calc(16px + env(safe-area-inset-bottom))}
-.ph{width:170px;height:300px;margin:10px auto;border:6px solid #222;border-radius:26px;background:#fafafa;position:relative;overflow:hidden}
+#sheet .card{background:#12152f;width:100%;max-height:85vh;overflow:auto;border-radius:16px 16px 0 0;margin:0;padding-bottom:calc(16px + env(safe-area-inset-bottom))}
+.ph{width:170px;height:300px;margin:10px auto;border:6px solid #3a3f6e;color:#222;border-radius:26px;background:#fafafa;position:relative;overflow:hidden}
 .ph .tb{position:absolute;left:0;right:0;height:34px;background:#eee;display:flex;align-items:center;justify-content:space-between;padding:0 8px;font-size:11px;color:#555}
 .ph .tb.top{top:0}.ph .tb.bot{bottom:0}
 .ph .pg{position:absolute;top:44px;left:10px;right:10px}
@@ -62,7 +65,7 @@ nav button.on{color:var(--acc);font-weight:700}
 .ph .hd{background:var(--acc);height:28px;border-radius:6px;margin-bottom:10px;color:#fff;font-size:11px;padding:7px}
 .ph .menu{position:absolute;background:#fff;box-shadow:0 4px 14px rgba(0,0,0,.25);border-radius:10px;font-size:11px;padding:4px 0;animation:up .5s ease}
 .ph .menu div{padding:7px 10px;border-bottom:1px solid #f0f0f0}
-.ph .menu .hi{background:var(--acc2);color:var(--acc);font-weight:700}
+.ph .menu .hi{background:#ece8ff;color:#5a3fff;font-weight:700}
 .ph .tap{position:absolute;width:30px;height:30px;border-radius:50%;border:3px solid #e8453c;transform:translate(-50%,-50%);animation:pulse 1.2s infinite}
 .ph .fin{position:absolute;font-size:22px;transform:translate(-20%,0);animation:poke 1.2s infinite}
 .ph .home{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;padding:40px 12px}
@@ -72,16 +75,16 @@ nav button.on{color:var(--acc);font-weight:700}
 @keyframes poke{0%,100%{margin-top:6px}50%{margin-top:0}}
 @keyframes up{from{opacity:0;transform:translateY(15px)}to{opacity:1}}
 .seg{display:flex;background:var(--acc2);border-radius:10px;padding:3px;margin-bottom:8px}
-.seg button{flex:1;border:none;background:none;padding:8px;border-radius:8px;font:inherit;color:var(--acc)}
-.seg button.on{background:#fff;font-weight:700;box-shadow:0 1px 3px rgba(0,0,0,.1)}
-.dots{text-align:center;margin:6px 0}.dots span{display:inline-block;width:8px;height:8px;border-radius:4px;background:var(--line);margin:0 3px}.dots span.on{background:var(--acc);width:20px}
+.seg button{flex:1;border:none;background:none;padding:8px;border-radius:8px;font:inherit;color:#b7adff}
+.seg button.on{background:var(--card);font-weight:700;box-shadow:0 1px 3px rgba(0,0,0,.1)}
+.dots{text-align:center;margin:6px 0}.dots span{display:inline-block;width:8px;height:8px;border-radius:4px;background:var(--line);margin:0 3px}.dots span.on{background:var(--grad);width:20px}
 .stepT{font-weight:700;text-align:center;font-size:16px;min-height:44px}
 label.f{font-size:12px;color:var(--mut);display:block}
-.big{font-size:28px;font-weight:700;color:var(--acc)}
+.big{font-size:28px;font-weight:700;background:var(--grad);-webkit-background-clip:text;background-clip:text;color:transparent}
 </style>
 </head>
 <body>
-<header><h1 id="ttl" data-lp="admin">🏡 Family Hub</h1><button class="me" id="meBtn"></button></header>
+<header><h1 id="ttl" data-lp="admin"><img src="logo.png" alt="">Family Hub</h1><button class="me" id="meBtn"></button></header>
 <main id="app"></main>
 <nav id="nav"></nav>
 
@@ -169,7 +172,7 @@ function render(){
 function go(k){tab=k;ls.set("fh_tab",k);document.activeElement?.blur();render();scrollTo(0,0)}
 function pickMe(){
   $("#nav").innerHTML="";$("#meBtn").classList.add("hide");
-  $("#app").innerHTML=`<div class="card"><h2>Who are you?</h2><div class="who">${D.members.map(m=>`<button style="background:${m.color}" onclick="setMe('${m.id}')">${face(m,72)}<br>${esc(m.name)}</button>`).join("")||'<p class="mut">Loading…</p>'}</div></div>`;
+  $("#app").innerHTML=`<div class="card"><h2>Who are you?</h2><div class="who">${D.members.map(m=>`<button style="background:${m.color};box-shadow:0 0 14px ${m.color}88" onclick="setMe('${m.id}')">${face(m,72)}<br>${esc(m.name)}</button>`).join("")||'<p class="mut">Loading…</p>'}</div></div>`;
 }
 function setMe(id){meId=id;ls.set("fh_meId",id);ls.set("fh_pickAt",Date.now());render()}
 
@@ -279,17 +282,17 @@ let gOS=/iPhone|iPad|iPod/.test(navigator.userAgent)?"ios":"and",gStep=0;
 const URLTXT="mwillard0927-ctrl.github.io/family-hub";
 const GUIDE={
 ios:[
- ["Open the link in <u>Safari</u>",`<div class="tb top">🔒 ${"family-hub"}</div><div class="pg"><div class="hd">🏡 Family Hub</div><i></i><i></i><i style="width:60%"></i></div><div class="tb bot"><span>‹</span><span>›</span><span>⬆️</span><span>📖</span><span>⧉</span></div><div class="tap" style="left:50%;top:17px"></div>`,"It must be Safari — Chrome on iPhone can't add apps."],
- ["Tap the <u>Share</u> button ⬆️ at the bottom",`<div class="tb top">🔒 family-hub</div><div class="pg"><div class="hd">🏡 Family Hub</div><i></i><i></i></div><div class="tb bot"><span>‹</span><span>›</span><span>⬆️</span><span>📖</span><span>⧉</span></div><div class="tap" style="left:50%;top:273px"></div><div class="fin" style="left:50%;top:230px">👆</div>`,"The square with the arrow pointing up. On newer iPhones, tap ••• first, then Share."],
+ ["Open the link in <u>Safari</u>",`<div class="tb top">🔒 ${"family-hub"}</div><div class="pg"><div class="hd" style="background:linear-gradient(90deg,#070918,#22104a)">Family Hub</div><i></i><i></i><i style="width:60%"></i></div><div class="tb bot"><span>‹</span><span>›</span><span>⬆️</span><span>📖</span><span>⧉</span></div><div class="tap" style="left:50%;top:17px"></div>`,"It must be Safari — Chrome on iPhone can't add apps."],
+ ["Tap the <u>Share</u> button ⬆️ at the bottom",`<div class="tb top">🔒 family-hub</div><div class="pg"><div class="hd" style="background:linear-gradient(90deg,#070918,#22104a)">Family Hub</div><i></i><i></i></div><div class="tb bot"><span>‹</span><span>›</span><span>⬆️</span><span>📖</span><span>⧉</span></div><div class="tap" style="left:50%;top:273px"></div><div class="fin" style="left:50%;top:230px">👆</div>`,"The square with the arrow pointing up. On newer iPhones, tap ••• first, then Share."],
  ["Scroll down, tap <u>Add to Home Screen</u>",`<div class="pg"><i></i></div><div class="menu" style="left:8px;right:8px;bottom:8px"><div>Copy</div><div>Add to Reading List</div><div>Add Bookmark</div><div class="hi">➕ Add to Home Screen</div><div>Find on Page</div></div><div class="tap" style="left:50%;top:228px"></div>`,"You may need to swipe the share menu up to see it."],
- ["Tap <u>Add</u> in the top-right corner",`<div class="tb top" style="background:#fff"><span>Cancel</span><b>Add to Home Screen</b><b style="color:#0a7aff">Add</b></div><div class="pg" style="top:50px;display:flex;gap:8px;align-items:center"><b style="width:40px;height:40px;border-radius:10px;background:var(--acc);display:block;text-align:center;line-height:40px">🏡</b><span style="font-size:12px">Family Hub</span></div><div class="tap" style="left:148px;top:17px"></div>`,"Leave the name as Family Hub."],
- ["Open it from your home screen 🎉",`<div class="home"><b></b><b></b><b></b><b></b><b></b><b class="me">🏡</b><b></b><b></b></div><div class="tap" style="left:59px;top:96px"></div>`,"From now on, open it from this icon — no browser bar."]],
+ ["Tap <u>Add</u> in the top-right corner",`<div class="tb top" style="background:#fff"><span>Cancel</span><b>Add to Home Screen</b><b style="color:#0a7aff">Add</b></div><div class="pg" style="top:50px;display:flex;gap:8px;align-items:center"><b style="width:40px;height:40px;border-radius:10px;background:var(--acc);display:block;text-align:center;line-height:40px"><img src="icon-64.png" style="width:100%;height:100%;border-radius:inherit;display:block"></b><span style="font-size:12px">Family Hub</span></div><div class="tap" style="left:148px;top:17px"></div>`,"Leave the name as Family Hub."],
+ ["Open it from your home screen 🎉",`<div class="home"><b></b><b></b><b></b><b></b><b></b><b class="me"><img src="icon-64.png" style="width:100%;height:100%;border-radius:inherit;display:block"></b><b></b><b></b></div><div class="tap" style="left:59px;top:96px"></div>`,"From now on, open it from this icon — no browser bar."]],
 and:[
- ["Open the link in <u>Chrome</u>",`<div class="tb top"><span>🔒 family-hub</span><b>⋮</b></div><div class="pg"><div class="hd">🏡 Family Hub</div><i></i><i></i><i style="width:60%"></i></div><div class="tap" style="left:50%;top:17px"></div>`,"Samsung Internet works too — look for its menu ≡ at the bottom."],
- ["Tap the <u>⋮</u> menu at the top-right",`<div class="tb top"><span>🔒 family-hub</span><b>⋮</b></div><div class="pg"><div class="hd">🏡 Family Hub</div><i></i><i></i></div><div class="tap" style="left:150px;top:17px"></div><div class="fin" style="left:142px;top:30px">👆</div>`,"Three dots stacked up and down."],
+ ["Open the link in <u>Chrome</u>",`<div class="tb top"><span>🔒 family-hub</span><b>⋮</b></div><div class="pg"><div class="hd" style="background:linear-gradient(90deg,#070918,#22104a)">Family Hub</div><i></i><i></i><i style="width:60%"></i></div><div class="tap" style="left:50%;top:17px"></div>`,"Samsung Internet works too — look for its menu ≡ at the bottom."],
+ ["Tap the <u>⋮</u> menu at the top-right",`<div class="tb top"><span>🔒 family-hub</span><b>⋮</b></div><div class="pg"><div class="hd" style="background:linear-gradient(90deg,#070918,#22104a)">Family Hub</div><i></i><i></i></div><div class="tap" style="left:150px;top:17px"></div><div class="fin" style="left:142px;top:30px">👆</div>`,"Three dots stacked up and down."],
  ["Tap <u>Add to Home screen</u> or <u>Install app</u>",`<div class="pg"><i></i></div><div class="menu" style="right:6px;top:6px;width:130px"><div>New tab</div><div>History</div><div>Downloads</div><div>Share…</div><div class="hi">📲 Add to Home screen</div><div>Settings</div></div><div class="tap" style="left:95px;top:136px"></div>`,"Either name — Chrome changes the wording sometimes."],
- ["Tap <u>Install</u> (or <u>Add</u>)",`<div class="pg"><i></i><i></i></div><div class="menu" style="left:10px;right:10px;top:90px;padding:12px"><b>Install app?</b><div style="border:none;display:flex;gap:8px;align-items:center"><b style="width:30px;height:30px;border-radius:8px;background:var(--acc);display:block;text-align:center;line-height:30px">🏡</b>Family Hub</div><div style="border:none;text-align:right"><span style="margin-right:14px">Cancel</span><b style="color:var(--acc)">Install</b></div></div><div class="tap" style="left:130px;top:178px"></div>`,"If it asks, tap Add automatically."],
- ["Open it from your home screen 🎉",`<div class="home"><b></b><b></b><b></b><b></b><b></b><b class="me">🏡</b><b></b><b></b></div><div class="tap" style="left:59px;top:96px"></div>`,"It opens full-screen like a regular app."]]};
+ ["Tap <u>Install</u> (or <u>Add</u>)",`<div class="pg"><i></i><i></i></div><div class="menu" style="left:10px;right:10px;top:90px;padding:12px"><b>Install app?</b><div style="border:none;display:flex;gap:8px;align-items:center"><b style="width:30px;height:30px;border-radius:8px;background:var(--acc);display:block;text-align:center;line-height:30px"><img src="icon-64.png" style="width:100%;height:100%;border-radius:inherit;display:block"></b>Family Hub</div><div style="border:none;text-align:right"><span style="margin-right:14px">Cancel</span><b style="color:var(--acc)">Install</b></div></div><div class="tap" style="left:130px;top:178px"></div>`,"If it asks, tap Add automatically."],
+ ["Open it from your home screen 🎉",`<div class="home"><b></b><b></b><b></b><b></b><b></b><b class="me"><img src="icon-64.png" style="width:100%;height:100%;border-radius:inherit;display:block"></b><b></b><b></b></div><div class="tap" style="left:59px;top:96px"></div>`,"It opens full-screen like a regular app."]]};
 function guideHTML(){const st=GUIDE[gOS],[t,ph,tip]=st[gStep];
   return `<div class="card"><h2>📲 Install on your phone</h2>
   <div class="seg"><button class="${gOS==="ios"?"on":""}" onclick="gOS='ios';gStep=0;render()"> iPhone</button><button class="${gOS==="and"?"on":""}" onclick="gOS='and';gStep=0;render()">🤖 Android</button></div>
