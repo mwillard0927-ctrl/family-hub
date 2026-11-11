@@ -1,0 +1,236 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cut">
+<meta name="theme-color" content="#2f6f5e">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<title>Family Hub</title>
+<link rel="manifest" href="manifest.json">
+<style>
+:root{--bg:#f6f3ee;--card:#fff;--ink:#22302b;--mut:#7a857f;--acc:#2f6f5e;--acc2:#e8f1ee;--line:#e5e0d8;--red:#c0483a}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:-apple-system,system-ui,Segoe UI,Roboto,sans-serif;background:var(--bg);color:var(--ink);padding-bottom:84px}
+header{position:sticky;top:0;background:var(--acc);color:#fff;padding:14px 16px calc(14px);padding-top:calc(14px + env(safe-area-inset-top));display:flex;justify-content:space-between;align-items:center;z-index:5}
+header h1{font-size:20px}
+.me{background:rgba(255,255,255,.18);border:none;color:#fff;border-radius:20px;padding:6px 12px;font-size:14px}
+main{padding:14px;max-width:640px;margin:auto}
+.card{background:var(--card);border-radius:14px;padding:14px;margin-bottom:12px;box-shadow:0 1px 3px rgba(0,0,0,.06)}
+h2{font-size:17px;margin:4px 0 10px}
+.mut{color:var(--mut);font-size:13px}
+input,textarea,select{width:100%;padding:10px;border:1px solid var(--line);border-radius:10px;font:inherit;margin-bottom:8px;background:#fff}
+textarea{min-height:70px}
+button.b{background:var(--acc);color:#fff;border:none;border-radius:10px;padding:10px 14px;font:inherit;font-weight:600}
+button.g{background:var(--acc2);color:var(--acc);border:none;border-radius:10px;padding:8px 12px;font:inherit}
+button.x{background:none;border:none;color:var(--mut);font-size:18px;float:right}
+.row{display:flex;gap:8px;align-items:center}
+.row>*{flex:1}
+nav{position:fixed;bottom:0;left:0;right:0;background:#fff;border-top:1px solid var(--line);display:flex;overflow-x:auto;padding-bottom:env(safe-area-inset-bottom);z-index:5}
+nav button{flex:1;min-width:64px;background:none;border:none;padding:8px 2px;font-size:11px;color:var(--mut)}
+nav button span{display:block;font-size:20px}
+nav button.on{color:var(--acc);font-weight:700}
+.chip{display:inline-block;border-radius:12px;padding:2px 8px;font-size:12px;color:#fff;margin-right:4px}
+.bar{height:8px;background:var(--acc2);border-radius:4px;overflow:hidden;margin:4px 0 8px}
+.bar i{display:block;height:100%;background:var(--acc)}
+.opt{border:1px solid var(--line);border-radius:10px;padding:8px;margin-bottom:6px}
+.opt.v{border-color:var(--acc);background:var(--acc2)}
+.cal{display:grid;grid-template-columns:repeat(7,1fr);gap:3px;text-align:center}
+.cal div{padding:6px 0;border-radius:8px;font-size:14px;min-height:40px}
+.cal .d{background:#fff}
+.cal .t{outline:2px solid var(--acc)}
+.cal .s{background:var(--acc);color:#fff}
+.cal .dot{display:block;width:6px;height:6px;border-radius:3px;background:var(--red);margin:2px auto 0}
+.chk{display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--line)}
+.chk input{width:22px;height:22px;margin:0}
+.chk.done .tx{text-decoration:line-through;color:var(--mut)}
+.chk .tx{flex:1}
+.photos{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.photos img{width:100%;border-radius:10px;display:block}
+.who{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.who button{padding:18px;border-radius:14px;border:none;color:#fff;font-size:17px;font-weight:600}
+.hide{display:none}
+.big{font-size:28px;font-weight:700;color:var(--acc)}
+</style>
+</head>
+<body>
+<header><h1>🏡 Family Hub</h1><button class="me" id="meBtn"></button></header>
+<main id="app"></main>
+<nav id="nav"></nav>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script>
+/* ====== SETUP: paste your Supabase Project URL + anon key here (or use the in-app setup screen) ====== */
+const SUPABASE = null; // e.g. {url:"https://xxxx.supabase.co", key:"eyJ..."}
+/* Family members — edit names/colors/emoji. Also editable in Settings inside the app. */
+const DEFAULT_MEMBERS = [
+  {name:"Matt",emoji:"🧔",color:"#2f6f5e"}
+];
+/* ===================================================================================== */
+
+const $=s=>document.querySelector(s);
+const esc=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const ls={get:(k,d)=>{try{return JSON.parse(localStorage.getItem(k))??d}catch{return d}},set:(k,v)=>{try{localStorage.setItem(k,JSON.stringify(v))}catch{}}};
+const cfg=SUPABASE||ls.get("fh_sb",null);
+let db,me=ls.get("fh_me",null),tab=ls.get("fh_tab","home");
+const D={members:[],notes:[],polls:[],events:[],chores:[],groceries:[],birthdays:[],photos:[]};
+let calMonth=new Date();calMonth.setDate(1);let calSel=ymd(new Date());
+
+function ymd(d){return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0")}
+function ago(t){if(!t)return"";const s=(Date.now()-t)/1000;if(s<60)return"just now";if(s<3600)return Math.floor(s/60)+"m ago";if(s<86400)return Math.floor(s/3600)+"h ago";return new Date(t).toLocaleDateString()}
+function mem(n){return D.members.find(m=>m.name===n)||{name:n,emoji:"🙂",color:"#888"}}
+function chip(n){const m=mem(n);return `<span class="chip" style="background:${m.color}">${m.emoji} ${esc(m.name)}</span>`}
+const strip=x=>{const{id,...r}=x;return r};
+const ins=(c,o)=>db.from("items").insert({coll:c,data:o}).then(chk);
+const add=(c,o)=>ins(c,{...o,by:me,at:Date.now()});
+function upd(c,id,o){const cur=D[c].find(x=>x.id===id);if(!cur)return;const d=strip(cur);
+  for(const k in o){if(k.includes(".")){const[a,b]=k.split(".");d[a]={...(d[a]||{}),[b]:o[k]}}else d[k]=o[k]}
+  Object.assign(cur,o);render();return db.from("items").update({data:d}).eq("id",id).then(chk)}
+const rm=id=>db.from("items").delete().eq("id",id).then(chk);
+const del=(c,id)=>{if(confirm("Delete this?"))rm(id)};
+function chk(r){if(r&&r.error)alert("Save failed: "+r.error.message);return r}
+
+const TABS=[["home","🏠","Home"],["notes","📝","Notes"],["polls","📊","Polls"],["cal","📅","Calendar"],["chores","✅","Chores"],["grocery","🛒","Grocery"],["bdays","🎂","Birthdays"],["photos","📷","Photos"],["settings","⚙️","Settings"]];
+
+function setup(){
+  $("#nav").innerHTML="";$("#meBtn").classList.add("hide");
+  $("#app").innerHTML=`<div class="card"><h2>One-time setup</h2>
+  <p class="mut">In Supabase: Project Settings → API. Copy the Project URL and the anon public key.</p><br>
+  <input id="sU" placeholder="https://xxxx.supabase.co"><textarea id="sK" placeholder="anon public key"></textarea>
+  <button class="b" onclick="saveCfg()">Connect</button></div>`;
+}
+function saveCfg(){const url=val("#sU"),key=val("#sK");if(!url.startsWith("https://")||key.length<20)return alert("Check the URL and key");ls.set("fh_sb",{url,key});location.reload()}
+
+async function start(){
+  db=supabase.createClient(cfg.url,cfg.key);
+  const r=await db.from("items").select("*");
+  if(r.error){$("#app").innerHTML=`<div class="card"><h2>Can't reach the database</h2><p class="mut">${esc(r.error.message)}</p><br><button class="g" onclick="localStorage.removeItem('fh_sb');location.reload()">Re-enter Supabase info</button></div>`;return}
+  r.data.forEach(put);
+  if(!D.members.length)for(const m of DEFAULT_MEMBERS)await ins("members",m).then(x=>x.data);
+  db.channel("items").on("postgres_changes",{event:"*",schema:"public",table:"items"},p=>{
+    if(p.eventType==="DELETE"){for(const c in D)D[c]=D[c].filter(x=>x.id!==p.old.id)}else put(p.new);render()}).subscribe(st=>{if(st==="SUBSCRIBED")resync()});
+  document.addEventListener("visibilitychange",()=>{if(!document.hidden)resync()});
+  render();
+}
+function put(row){const c=row.coll;if(!D[c])return;const o={...row.data,id:row.id};const i=D[c].findIndex(x=>x.id===row.id);i<0?D[c].push(o):D[c][i]=o}
+async function resync(){const r=await db.from("items").select("*");if(r.error)return;for(const c in D)D[c]=[];r.data.forEach(put);render()}
+
+function render(){
+  if(!me||!D.members.find(m=>m.name===me))return pickMe();
+  const m=mem(me);$("#meBtn").classList.remove("hide");$("#meBtn").textContent=m.emoji+" "+m.name;
+  $("#nav").innerHTML=TABS.map(([k,i,l])=>`<button class="${tab===k?"on":""}" onclick="go('${k}')"><span>${i}</span>${l}</button>`).join("");
+  const a=document.activeElement;if(a&&(a.tagName==="INPUT"||a.tagName==="TEXTAREA")&&a.value)return; // don't wipe typing
+  $("#app").innerHTML=V[tab]();
+}
+function go(k){tab=k;ls.set("fh_tab",k);document.activeElement?.blur();render();scrollTo(0,0)}
+function pickMe(){
+  $("#nav").innerHTML="";$("#meBtn").classList.add("hide");
+  $("#app").innerHTML=`<div class="card"><h2>Who are you?</h2><div class="who">${D.members.map(m=>`<button style="background:${m.color}" onclick="setMe('${esc(m.name)}')">${m.emoji}<br>${esc(m.name)}</button>`).join("")||'<p class="mut">Loading…</p>'}</div></div>`;
+}
+function setMe(n){me=n;ls.set("fh_me",n);render()}
+$("#meBtn").onclick=()=>{me=null;pickMe()};
+
+function nextBday(b){const t=new Date();t.setHours(0,0,0,0);const [y,mo,da]=b.date.split("-").map(Number);let n=new Date(t.getFullYear(),mo-1,da);if(n<t)n.setFullYear(t.getFullYear()+1);return{days:Math.round((n-t)/864e5),age:y>1900?n.getFullYear()-y:null}}
+function upcoming(){const t=ymd(new Date());return D.events.filter(e=>e.date>=t).sort((a,b)=>(a.date+(a.time||"")).localeCompare(b.date+(b.time||"")))}
+
+const V={
+home(){
+  const ev=upcoming().slice(0,4),bd=D.birthdays.map(b=>({...b,...nextBday(b)})).sort((a,b)=>a.days-b.days).slice(0,3);
+  const myCh=D.chores.filter(c=>!c.done&&c.to===me),open=D.polls.filter(p=>!(p.votes||{})[me]);
+  return `<div class="card"><div class="mut">Hi ${esc(me)} 👋</div><div class="big">${new Date().toLocaleDateString(undefined,{weekday:"long",month:"long",day:"numeric"})}</div></div>
+  <div class="card"><h2>📅 Coming up</h2>${ev.map(e=>`<div class="chk"><div class="tx"><b>${esc(e.title)}</b><div class="mut">${fmtD(e.date)}${e.time?" · "+fmtT(e.time):""}</div></div></div>`).join("")||'<p class="mut">Nothing scheduled.</p>'}</div>
+  <div class="card"><h2>🎂 Birthdays</h2>${bd.map(b=>`<div class="chk"><div class="tx"><b>${esc(b.name)}</b>${b.age?` turns ${b.age}`:""}</div><b>${b.days===0?"🎉 Today!":b.days+" days"}</b></div>`).join("")||'<p class="mut">None added yet.</p>'}</div>
+  <div class="card"><h2>✅ Your chores (${myCh.length})</h2>${myCh.map(c=>`<div class="chk"><input type="checkbox" onchange="upd('chores','${c.id}',{done:true,doneBy:me})"><div class="tx">${esc(c.text)}${c.due?` <span class="mut">· due ${fmtD(c.due)}</span>`:""}</div></div>`).join("")||'<p class="mut">All caught up!</p>'}</div>
+  ${open.length?`<div class="card"><h2>📊 Polls waiting on you</h2>${open.map(p=>`<p>• ${esc(p.q)}</p>`).join("")}<br><button class="g" onclick="go('polls')">Vote now</button></div>`:""}
+  ${D.notes.length?`<div class="card"><h2>📝 Latest note</h2>${noteHTML(D.notes.sort((a,b)=>b.at-a.at)[0])}</div>`:""}`;
+},
+notes(){
+  const list=D.notes.filter(n=>n.to==="Everyone"||n.to===me||n.by===me).sort((a,b)=>(b.pin?1:0)-(a.pin?1:0)||b.at-a.at);
+  return `<div class="card"><h2>Leave a note</h2><select id="nTo"><option>Everyone</option>${D.members.filter(m=>m.name!==me).map(m=>`<option>${esc(m.name)}</option>`).join("")}</select>
+  <textarea id="nTx" placeholder="Write a note…"></textarea><button class="b" onclick="postNote()">Post</button></div>
+  ${list.map(n=>`<div class="card">${noteHTML(n,true)}</div>`).join("")||'<p class="mut">No notes yet.</p>'}`;
+},
+polls(){
+  return `<div class="card"><h2>New poll</h2><input id="pQ" placeholder="Question (e.g. Pizza or tacos Friday?)">
+  <textarea id="pO" placeholder="Options, one per line"></textarea><button class="b" onclick="postPoll()">Create poll</button></div>
+  ${D.polls.sort((a,b)=>b.at-a.at).map(p=>{const v=p.votes||{},tot=Object.keys(v).length;
+    return `<div class="card"><button class="x" onclick="del('polls','${p.id}')">×</button>${chip(p.by)}<span class="mut">${ago(p.at)}</span><h2 style="margin-top:8px">${esc(p.q)}</h2>
+    ${p.opts.map((o,i)=>{const who=Object.keys(v).filter(k=>v[k]===i),pc=tot?Math.round(who.length/tot*100):0;
+      return `<div class="opt ${v[me]===i?"v":""}" onclick="vote('${p.id}',${i})"><div class="row"><b>${esc(o)}</b><span style="text-align:right" class="mut">${who.length} · ${pc}%</span></div><div class="bar"><i style="width:${pc}%"></i></div>${who.map(chip).join("")}</div>`}).join("")}
+    <p class="mut">${tot} of ${D.members.length} voted · tap an option to vote or change</p></div>`}).join("")}`;
+},
+cal(){
+  const y=calMonth.getFullYear(),mo=calMonth.getMonth(),first=new Date(y,mo,1).getDay(),n=new Date(y,mo+1,0).getDate(),t=ymd(new Date());
+  const has=new Set(D.events.map(e=>e.date));
+  D.birthdays.forEach(b=>{const p=b.date.split("-");has.add(`${y}-${p[1]}-${p[2]}`)});
+  let cells=["S","M","T","W","T","F","S"].map(d=>`<div class="mut">${d}</div>`).join("")+"<div></div>".repeat(first);
+  for(let d=1;d<=n;d++){const k=`${y}-${String(mo+1).padStart(2,"0")}-${String(d).padStart(2,"0")}`;
+    cells+=`<div class="d ${k===t?"t":""} ${k===calSel?"s":""}" onclick="calSel='${k}';render()">${d}${has.has(k)?'<i class="dot"></i>':""}</div>`}
+  const day=D.events.filter(e=>e.date===calSel).sort((a,b)=>(a.time||"").localeCompare(b.time||""));
+  const bd=D.birthdays.filter(b=>b.date.slice(5)===calSel.slice(5));
+  return `<div class="card"><div class="row"><button class="g" style="flex:0" onclick="calMonth.setMonth(calMonth.getMonth()-1);render()">‹</button>
+  <h2 style="text-align:center;margin:0">${calMonth.toLocaleDateString(undefined,{month:"long",year:"numeric"})}</h2>
+  <button class="g" style="flex:0" onclick="calMonth.setMonth(calMonth.getMonth()+1);render()">›</button></div><br><div class="cal">${cells}</div></div>
+  <div class="card"><h2>${fmtD(calSel)}</h2>${bd.map(b=>`<p>🎂 <b>${esc(b.name)}'s birthday</b></p>`).join("")}
+  ${day.map(e=>`<div class="chk"><div class="tx"><b>${esc(e.title)}</b><div class="mut">${e.time?fmtT(e.time)+" · ":""}${e.who?esc(e.who)+" · ":""}added by ${esc(e.by)}</div>${e.notes?`<div class="mut">${esc(e.notes)}</div>`:""}</div><button class="x" onclick="del('events','${e.id}')">×</button></div>`).join("")||(bd.length?"":'<p class="mut">No events.</p>')}</div>
+  <div class="card"><h2>Add event</h2><input id="eT" placeholder="Event name"><div class="row"><input id="eD" type="date" value="${calSel}"><input id="eTm" type="time"></div>
+  <select id="eW"><option value="">Whole family</option>${D.members.map(m=>`<option>${esc(m.name)}</option>`).join("")}</select>
+  <select id="eR"><option value="">Doesn't repeat</option><option value="7">Every week (8 weeks)</option><option value="14">Every 2 weeks (8 times)</option></select>
+  <input id="eN" placeholder="Notes (optional)"><button class="b" onclick="postEvent()">Add to calendar</button></div>
+  <div class="card"><h2>Upcoming</h2>${upcoming().slice(0,10).map(e=>`<p>${fmtD(e.date)} — <b>${esc(e.title)}</b>${e.time?" "+fmtT(e.time):""}</p>`).join("")||'<p class="mut">Nothing yet.</p>'}</div>`;
+},
+chores(){
+  const open=D.chores.filter(c=>!c.done),done=D.chores.filter(c=>c.done).sort((a,b)=>b.at-a.at).slice(0,15);
+  return `<div class="card"><h2>Add chore</h2><input id="cT" placeholder="e.g. Take out trash"><div class="row"><select id="cTo">${D.members.map(m=>`<option ${m.name===me?"selected":""}>${esc(m.name)}</option>`).join("")}<option value="">Anyone</option></select><input id="cD" type="date"></div>
+  <button class="b" onclick="postChore()">Add</button></div>
+  <div class="card"><h2>To do (${open.length})</h2>${open.map(c=>`<div class="chk"><input type="checkbox" onchange="upd('chores','${c.id}',{done:true,doneBy:me})"><div class="tx">${esc(c.text)}<div>${c.to?chip(c.to):'<span class="mut">Anyone</span>'}${c.due?`<span class="mut"> due ${fmtD(c.due)}</span>`:""}</div></div><button class="x" onclick="del('chores','${c.id}')">×</button></div>`).join("")||'<p class="mut">Nothing to do 🎉</p>'}</div>
+  <div class="card"><h2>Recently done</h2>${done.map(c=>`<div class="chk done"><input type="checkbox" checked onchange="upd('chores','${c.id}',{done:false})"><div class="tx">${esc(c.text)} <span class="mut">by ${esc(c.doneBy||"")}</span></div><button class="x" onclick="del('chores','${c.id}')">×</button></div>`).join("")||'<p class="mut">—</p>'}</div>`;
+},
+grocery(){
+  const l=D.groceries.sort((a,b)=>(a.got?1:0)-(b.got?1:0)||a.at-b.at);
+  return `<div class="card"><div class="row"><input id="gT" placeholder="Add item…" onkeydown="if(event.key==='Enter')postGroc()"><button class="b" style="flex:0" onclick="postGroc()">Add</button></div>
+  ${l.map(g=>`<div class="chk ${g.got?"done":""}"><input type="checkbox" ${g.got?"checked":""} onchange="upd('groceries','${g.id}',{got:this.checked})"><div class="tx">${esc(g.text)} <span class="mut">· ${esc(g.by)}</span></div><button class="x" onclick="rm('${g.id}')">×</button></div>`).join("")||'<p class="mut">List is empty.</p>'}
+  ${l.some(g=>g.got)?`<br><button class="g" onclick="clearGot()">Clear checked items</button>`:""}</div>`;
+},
+bdays(){
+  const l=D.birthdays.map(b=>({...b,...nextBday(b)})).sort((a,b)=>a.days-b.days);
+  return `<div class="card"><h2>Add birthday / anniversary</h2><input id="bN" placeholder="Name (e.g. Grandma)"><input id="bD" type="date"><button class="b" onclick="postBday()">Save</button></div>
+  ${l.map(b=>`<div class="card"><button class="x" onclick="del('birthdays','${b.id}')">×</button><b>${esc(b.name)}</b> <span class="mut">${fmtD(b.date,true)}</span><div class="big">${b.days===0?"🎉 Today!":b.days+" days"}</div>${b.age?`<span class="mut">turns ${b.age}</span>`:""}</div>`).join("")}`;
+},
+photos(){
+  return `<div class="card"><h2>Post a photo</h2><input id="phF" type="file" accept="image/*"><input id="phC" placeholder="Caption"><button class="b" onclick="postPhoto()">Post</button><p class="mut" id="phS"></p></div>
+  <div class="photos">${D.photos.sort((a,b)=>b.at-a.at).map(p=>`<div class="card" style="padding:6px"><img src="${p.img}" alt=""><p style="margin:6px 2px 2px">${esc(p.cap)}</p><div class="mut">${esc(p.by)} · ${ago(p.at)}${p.by===me?` · <a onclick="del('photos','${p.id}')">delete</a>`:""}</div></div>`).join("")}</div>`;
+},
+settings(){
+  return `<div class="card"><h2>Family members</h2>${D.members.map(m=>`<div class="chk"><span style="font-size:24px">${m.emoji}</span><div class="tx"><b style="color:${m.color}">${esc(m.name)}</b></div><button class="x" onclick="del('members','${m.id}')">×</button></div>`).join("")}
+  <br><div class="row"><input id="mE" placeholder="Emoji" style="flex:0 0 70px"><input id="mN" placeholder="Name"><input id="mC" type="color" value="#4a7bd0" style="flex:0 0 50px;padding:2px"></div><button class="b" onclick="postMem()">Add member</button></div>
+  <div class="card"><h2>Install on your phone</h2><p class="mut">iPhone: Safari → Share → Add to Home Screen. Android: Chrome menu → Install app.</p></div>
+  <div class="card"><button class="g" onclick="localStorage.removeItem('fh_sb');location.reload()">Reset Supabase connection</button></div>`;
+}};
+
+function noteHTML(n,full){return `${full&&(n.by===me)?`<button class="x" onclick="del('notes','${n.id}')">×</button>`:""}${chip(n.by)} → ${n.to==="Everyone"?"<b>Everyone</b>":chip(n.to)} <span class="mut">${ago(n.at)}</span>${n.pin?" 📌":""}
+  <p style="margin:8px 0;white-space:pre-wrap">${esc(n.text)}</p>${full?`<div>${Object.keys(n.hearts||{}).map(k=>"❤️").join("")}<button class="g" onclick="heart('${n.id}')">❤️ ${Object.keys(n.hearts||{}).length||""}</button> <button class="g" onclick="upd('notes','${n.id}',{pin:${!n.pin}})">${n.pin?"Unpin":"📌 Pin"}</button></div>`:""}`}
+function fmtD(s,noYr){const[y,m,d]=s.split("-").map(Number);return new Date(y,m-1,d).toLocaleDateString(undefined,{weekday:noYr?undefined:"short",month:"short",day:"numeric"})}
+function fmtT(t){const[h,m]=t.split(":").map(Number);return((h%12)||12)+":"+String(m).padStart(2,"0")+(h<12?" AM":" PM")}
+const val=id=>$(id).value.trim(),clr=(...ids)=>ids.forEach(i=>$(i).value="");
+
+function postNote(){const t=val("#nTx");if(!t)return;add("notes",{text:t,to:$("#nTo").value});clr("#nTx");$("#nTx").blur()}
+function heart(id){const n=D.notes.find(x=>x.id===id),h={...(n.hearts||{})};h[me]?delete h[me]:h[me]=1;upd("notes",id,{hearts:h})}
+function postPoll(){const q=val("#pQ"),o=$("#pO").value.split("\n").map(s=>s.trim()).filter(Boolean);if(!q||o.length<2)return alert("Add a question and at least 2 options");add("polls",{q,opts:o,votes:{}});clr("#pQ","#pO");document.activeElement.blur()}
+function vote(id,i){upd("polls",id,{["votes."+me]:i})}
+function postEvent(){const t=val("#eT"),d=$("#eD").value;if(!t||!d)return alert("Add a name and date");const r=+$("#eR").value,n=r?8:1;
+  for(let k=0;k<n;k++){const dt=new Date(d+"T12:00");dt.setDate(dt.getDate()+k*r);add("events",{title:t,date:ymd(dt),time:$("#eTm").value,who:$("#eW").value,notes:val("#eN")})}
+  clr("#eT","#eN");calSel=d;document.activeElement.blur()}
+function postChore(){const t=val("#cT");if(!t)return;add("chores",{text:t,to:$("#cTo").value,due:$("#cD").value,done:false});clr("#cT");document.activeElement.blur()}
+function postGroc(){const t=val("#gT");if(!t)return;add("groceries",{text:t,got:false});clr("#gT")}
+function clearGot(){D.groceries.filter(g=>g.got).forEach(g=>rm(g.id))}
+function postBday(){const n=val("#bN"),d=$("#bD").value;if(!n||!d)return;add("birthdays",{name:n,date:d});clr("#bN","#bD");document.activeElement.blur()}
+function postMem(){const n=val("#mN");if(!n)return;ins("members",{name:n,emoji:val("#mE")||"🙂",color:$("#mC").value});clr("#mN","#mE");document.activeElement.blur()}
+function postPhoto(){const f=$("#phF").files[0];if(!f)return;$("#phS").textContent="Uploading…";
+  const img=new Image();img.onload=()=>{const s=Math.min(1,900/Math.max(img.width,img.height)),c=document.createElement("canvas");c.width=img.width*s;c.height=img.height*s;c.getContext("2d").drawImage(img,0,0,c.width,c.height);
+    add("photos",{img:c.toDataURL("image/jpeg",.7),cap:val("#phC")}).then(()=>{$("#phS").textContent="";clr("#phC");$("#phF").value=""})};img.src=URL.createObjectURL(f)}
+
+if(!cfg)setup();else start();
+if("serviceWorker"in navigator)navigator.serviceWorker.register("sw.js").catch(()=>{});
+</script>
+</body>
+</html>
